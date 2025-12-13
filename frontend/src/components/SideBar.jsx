@@ -5,57 +5,73 @@ export default function SideBar({
     onSelectMedia
 }) {
     const btnStyle = {
-        display: "block",
-        width: "100%",
-        padding: "15px",
-        margin: "10px 0",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        width: "50px",
+        height: "50px",
+        margin: "15px auto",
         background: "#2a2a2a",
         color: "white",
         border: "none",
-        borderRadius: "8px",
-        textAlign: "left",
+        borderRadius: "12px",
         cursor: "pointer",
-        fontSize: "16px",
-        transition: "background 0.2s"
+        fontSize: "24px",
+        transition: "all 0.2s",
+        position: "relative"
     };
 
-    const iconStyle = { marginRight: "10px" };
+    const activeStyle = { ...btnStyle, background: "#7a35f0", boxShadow: "0 0 10px #7a35f0" };
+    const inactiveStyle = { ...btnStyle, background: "#ff4444" };
 
     return (
         <div style={{
-            width: "250px",
+            width: "80px",
             background: "#111",
             height: "100%",
-            padding: "20px",
+            padding: "20px 0",
             boxSizing: "border-box",
             display: "flex",
-            flexDirection: "column"
+            flexDirection: "column",
+            alignItems: "center",
+            borderLeft: "1px solid #333"
         }}>
-            <h3 style={{ color: "#7a35f0", marginBottom: "30px", textAlign: "center" }}>You&Me</h3>
+            <h3 style={{ color: "#7a35f0", marginBottom: "30px", fontSize: "14px", textAlign: "center" }}>Y&M</h3>
 
-            <div style={{ marginBottom: "auto" }}>
-                <button onClick={() => toggleMic(roomId)} style={{ ...btnStyle, background: micEnabled ? "#7a35f0" : "#ff4444" }}>
-                    <span style={iconStyle}>{micEnabled ? "🎤" : "🔇"}</span>
-                    {micEnabled ? "Mic On" : "Mic Off"}
+            <div style={{ marginBottom: "auto", width: "100%" }}>
+                {/* Mic */}
+                <button
+                    onClick={() => toggleMic(roomId)}
+                    style={micEnabled ? activeStyle : inactiveStyle}
+                    title={micEnabled ? "Mute Mic" : "Unmute Mic"}
+                >
+                    {micEnabled ? "🎤" : "🔇"}
                 </button>
 
-                <button onClick={() => toggleCam(roomId)} style={{ ...btnStyle, background: camEnabled ? "#7a35f0" : "#ff4444" }}>
-                    <span style={iconStyle}>{camEnabled ? "📷" : "🚫"}</span>
-                    {camEnabled ? "Cam On" : "Cam Off"}
+                {/* Cam */}
+                <button
+                    onClick={() => toggleCam(roomId)}
+                    style={camEnabled ? activeStyle : inactiveStyle}
+                    title={camEnabled ? "Turn Cam Off" : "Turn Cam On"}
+                >
+                    {camEnabled ? "📷" : "🚫"}
                 </button>
 
-                <hr style={{ borderColor: "#333", margin: "20px 0" }} />
+                <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
 
-                <button onClick={() => onSelectMedia("youtube")} style={btnStyle}>
-                    <span style={iconStyle}>📺</span> YouTube
+                {/* YouTube */}
+                <button onClick={() => onSelectMedia("youtube")} style={btnStyle} title="Watch YouTube">
+                    📺
                 </button>
 
-                <button onClick={() => onSelectMedia("web")} style={btnStyle}>
-                    <span style={iconStyle}>🌐</span> Website
+                {/* Website */}
+                <button onClick={() => onSelectMedia("web")} style={btnStyle} title="Browse Website">
+                    🌐
                 </button>
 
-                <label style={btnStyle}>
-                    <span style={iconStyle}>📂</span> Local File
+                {/* File */}
+                <label style={btnStyle} title="Play Local File">
+                    📂
                     <input
                         type="file"
                         style={{ display: "none" }}
@@ -64,11 +80,13 @@ export default function SideBar({
                 </label>
             </div>
 
+            {/* Invite */}
             <button
                 onClick={() => navigator.clipboard.writeText(window.location.href)}
-                style={{ ...btnStyle, background: "#0099ff", marginTop: "20px", textAlign: "center" }}
+                style={{ ...btnStyle, background: "#0099ff", width: "50px", height: "50px", fontSize: "20px" }}
+                title="Copy Invite Link"
             >
-                Copy Invite Link 🔗
+                🔗
             </button>
         </div>
     );
