@@ -23,7 +23,11 @@ export default function YouTubePlayer({ roomId }) {
         playerRef.current = new window.YT.Player("yt-player", {
             height: "360",
             width: "640",
-            videoId: videoId || "",
+            videoId: videoId || "dQw4w9WgXcQ", // Default to Rick Roll to ensure valid ID prevents null crash
+            playerVars: {
+                playsinline: 1,
+                origin: window.location.origin,
+            },
             events: {
                 onReady: onPlayerReady,
                 onStateChange: onPlayerStateChange,
