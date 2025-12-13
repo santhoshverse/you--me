@@ -7,7 +7,8 @@ export default function EnterNamePage() {
     const navigate = useNavigate();
 
     async function submitName() {
-        const res = await fetch("http://localhost:4000/api/rooms/guest", {
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+        const res = await fetch(`${BACKEND_URL}/api/rooms/guest`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name })
