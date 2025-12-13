@@ -7,19 +7,32 @@ export default function EnterNamePage() {
     const navigate = useNavigate();
 
     async function submitName() {
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
-        const res = await fetch(`${BACKEND_URL}/api/rooms/guest`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name })
-        });
+        try {
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+            console.log("Connecting to:", BACKEND_URL); // Debug log
 
-        const data = await res.json();
+            const res = await fetch(`${BACKEND_URL}/api/rooms/guest`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name })
+            });
 
-        localStorage.setItem("userId", data.userId);
-        localStorage.setItem("name", data.name);
+            if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
-        navigate("/create");
+            const data = await res.json();
+            console.log("Response:", data); // Debug log
+
+            if (data.success) {
+                localStorage.setItem("userId", data.userId);
+                localStorage.setItem("name", data.name);
+                navigate("/create");
+            } else {
+                alert("Failed to register guest user.");
+            }
+        } catch (err) {
+            console.error("Error submitting name:", err);
+            alert("Something went wrong! Check console for details.\n" + err.message);
+        }
     }
 
     return (
