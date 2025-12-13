@@ -25,7 +25,12 @@ socketHandler(io);
 
 // Start server
 server.listen(PORT, async () => {
-    await connectDB();
-    await sequelize.sync();
     console.log(`🚀 Server running on port ${PORT}`);
+    try {
+        await connectDB();
+        await sequelize.sync();
+        console.log("✅ Database synced successfully");
+    } catch (err) {
+        console.error("❌ Database sync failed:", err);
+    }
 });
