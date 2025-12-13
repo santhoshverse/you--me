@@ -3,8 +3,7 @@ import { useParams } from "react-router-dom";
 import CouchLayout from "../components/CouchLayout";
 import ChatPanel from "../components/ChatPanel";
 import YouTubePlayer from "../components/YouTubePlayer";
-import ScreenShareButton from "../components/ScreenShareButton";
-import ControlsBar from "../components/ControlsBar";
+import SideBar from "../components/SideBar";
 import useWebRTC from "../hooks/useWebRTC";
 
 export default function RoomPage() {
@@ -25,59 +24,83 @@ export default function RoomPage() {
         username
     } = useWebRTC();
 
+    const [mediaType, setMediaType] = React.useState("youtube"); // youtube, web, file, screen
+    const [webUrl, setWebUrl] = React.useState(null);
+
     React.useEffect(() => {
         joinRoom(roomId);
     }, [roomId]);
 
+    // Handle media selection
+    const handleSelectMedia = (type, payload) => {
+        setMediaType(type);
+
+        if (type === "web") {
+            const url = prompt("Enter Website URL (https://...):");
+            if (url) setWebUrl(url);
+        } else if (type === "file") {
+            alert(`File selected: ${payload?.name} (Coming Soon)`);
+        } else if (type === "youtube") {
+            // YouTube component handles its own internal ID state for now
+        }
+    };
+
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <h2 style={{ textAlign: "center" }}>Room: {roomId}</h2>
-
-            <button
-                onClick={() => navigator.clipboard.writeText(window.location.href)}
-                style={{
-                    padding: "10px 20px",
-                    background: "#0099ff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    marginBottom: "10px",
-                    cursor: "pointer",
-                    margin: "0 auto"
-                }}
-            >
-                Copy Invite Link 🔗
-            </button>
-
-            <ControlsBar
+        <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
+            {/* Left Sidebar */}
+            <SideBar
                 toggleMic={toggleMic}
                 toggleCam={toggleCam}
                 micEnabled={micEnabled}
                 camEnabled={camEnabled}
                 roomId={roomId}
+                onSelectMedia={handleSelectMedia}
             />
 
-            <ScreenShareButton
-                startShare={() => startScreenShare(roomId)}
-                stopShare={() => stopScreenShare(roomId)}
-                isSharing={isSharing}
-            />
-            <CouchLayout localStream={localStream} peers={peers} username={username} />
+            {/* Main Content Area */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
 
-            {screenStream ? (
-                <video
-                    autoPlay
-                    playsInline
-                    style={{ width: "100%", borderRadius: "10px", marginTop: "10px" }}
-                    ref={(video) => {
-                        if (video) video.srcObject = screenStream;
-                    }}
-                />
-            ) : (
-                <YouTubePlayer roomId={roomId} />
-            )}
+                {/* Media Area (YouTube / Screen / Web) */}
+                <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {/* Render based on selected media type */}
+                    {mediaType === "youtube" && <YouTubePlayer roomId={roomId} />}
 
-            <ChatPanel />
+                    {mediaType === "web" && webUrl && (
+                        <iframe
+                            src={webUrl}
+                            style={{ width: "100%", height: "100%", border: "none" }}
+                            title="Web Browser"
+                        />
+                    )}
+
+                    {mediaType === "screen" && screenStream && (
+                        <video
+                            autoPlay
+                            playsInline
+                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                            ref={(video) => {
+                                if (video) video.srcObject = screenStream;
+                            }}
+                        />
+                    )}
+                </div>
+
+                {/* Avatars at Bottom */}
+                <div style={{ height: "200px" }}> {/* Fixed height for avatars */}
+                    <CouchLayout localStream={localStream} peers={peers} username={username} />
+                </div>
+            </div>
+
+            {/* Chat Panel (Overlay or Right) */}
+            <div style={{
+                position: "absolute",
+                right: "20px",
+                top: "20px",
+                width: "300px",
+                zIndex: 10
+            }}>
+                <ChatPanel />
+            </div>
         </div>
     );
 }
