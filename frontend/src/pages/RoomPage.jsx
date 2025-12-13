@@ -61,17 +61,11 @@ export default function RoomPage() {
 
     return (
         <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
-            {/* Left Sidebar */}
-            <SideBar
-                toggleMic={toggleMic}
-                toggleCam={toggleCam}
-                micEnabled={micEnabled}
-                camEnabled={camEnabled}
-                roomId={roomId}
-                onSelectMedia={handleSelectMedia}
-            />
 
-            {/* Main Content Area */}
+            {/* Left: Chat Panel */}
+            <ChatPanel />
+
+            {/* Center: Main Content Area */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
 
                 {/* Media Area (YouTube / Screen / Web) */}
@@ -100,21 +94,20 @@ export default function RoomPage() {
                 </div>
 
                 {/* Avatars at Bottom */}
-                <div style={{ height: "200px" }}> {/* Fixed height for avatars */}
+                <div style={{ height: "180px" }}> {/* Fixed height for avatars */}
                     <CouchLayout localStream={localStream} peers={peers} username={username} />
                 </div>
             </div>
 
-            {/* Chat Panel (Overlay or Right) */}
-            <div style={{
-                position: "absolute",
-                right: "20px",
-                top: "20px",
-                width: "300px",
-                zIndex: 10
-            }}>
-                <ChatPanel />
-            </div>
+            {/* Right: Sidebar (Slim) */}
+            <SideBar
+                toggleMic={toggleMic}
+                toggleCam={toggleCam}
+                micEnabled={micEnabled}
+                camEnabled={camEnabled}
+                roomId={roomId}
+                onSelectMedia={handleSelectMedia}
+            />
         </div>
     );
 }
