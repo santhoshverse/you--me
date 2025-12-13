@@ -1,8 +1,9 @@
-```javascript
+
 import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import { v4 as uuid } from "uuid";
 
+export default function useWebRTC() {
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({});
   const [isSharing, setIsSharing] = useState(false);
@@ -16,9 +17,9 @@ import { v4 as uuid } from "uuid";
   const iceServers = [
     { urls: "stun:stun.l.google.com:19302" },
     {
-        urls: "turn:YOUR_PUBLIC_IP:3478",
-        username: "user",
-        credential: "pass"
+      urls: "turn:YOUR_PUBLIC_IP:3478",
+      username: "user",
+      credential: "pass"
     }
   ];
 
@@ -35,12 +36,12 @@ import { v4 as uuid } from "uuid";
 
   function toggleMic(roomId) {
     if (!localStream) return;
-  
+
     const audioTrack = localStream.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
       setMicEnabled(audioTrack.enabled);
-  
+
       socket.emit("toggle-mic", {
         roomId,
         peerId: peerId.current,
@@ -48,15 +49,15 @@ import { v4 as uuid } from "uuid";
       });
     }
   }
-  
+
   function toggleCam(roomId) {
     if (!localStream) return;
-  
+
     const videoTrack = localStream.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
       setCamEnabled(videoTrack.enabled);
-  
+
       socket.emit("toggle-cam", {
         roomId,
         peerId: peerId.current,
@@ -72,12 +73,12 @@ import { v4 as uuid } from "uuid";
       const stream = event.streams[0];
       setPeers(prev => ({
         ...prev,
-        [remoteId]: { 
-            peerId: remoteId, 
-            stream, 
-            micEnabled: true, 
-            camEnabled: true,
-            username: prev[remoteId]?.username 
+        [remoteId]: {
+          peerId: remoteId,
+          stream,
+          micEnabled: true,
+          camEnabled: true,
+          username: prev[remoteId]?.username
         }
       }));
     };
@@ -106,9 +107,9 @@ import { v4 as uuid } from "uuid";
     setIsSharing(true);
 
     Object.values(peerConnections.current).forEach(pc => {
-        displayStream.getTracks().forEach(track => {
-            pc.addTrack(track, displayStream);
-        });
+      displayStream.getTracks().forEach(track => {
+        pc.addTrack(track, displayStream);
+      });
     });
 
     socket.emit("screen-started", { roomId, peerId: peerId.current });
@@ -118,7 +119,7 @@ import { v4 as uuid } from "uuid";
 
   function stopScreenShare(roomId) {
     if (screenStream) {
-        screenStream.getTracks().forEach(track => track.stop());
+      screenStream.getTracks().forEach(track => track.stop());
     }
 
     setScreenStream(null);
@@ -132,17 +133,17 @@ import { v4 as uuid } from "uuid";
     socket.emit("join-room", { roomId, peerId: peerId.current });
 
     socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
-        setPeers(prev => ({
-            ...prev,
-            [remoteId]: { ...prev[remoteId], username: remoteName }
-        }));
-        
+      setPeers(prev => ({
+        ...prev,
+        [remoteId]: { ...prev[remoteId], username: remoteName }
+      }));
+
       const pc = createPeerConnection(remoteId);
 
       // Add our tracks
       if (localStream) {
         localStream.getTracks().forEach(track =>
-            pc.addTrack(track, localStream)
+          pc.addTrack(track, localStream)
         );
       }
 
@@ -162,7 +163,7 @@ import { v4 as uuid } from "uuid";
 
       if (localStream) {
         localStream.getTracks().forEach(track =>
-            pc.addTrack(track, localStream)
+          pc.addTrack(track, localStream)
         );
       }
 
@@ -189,13 +190,13 @@ import { v4 as uuid } from "uuid";
       if (!pc) return;
       await pc.addIceCandidate(candidate);
     });
-    
+
     socket.on("screen-started", ({ peerId }) => {
-        console.log("Screen started by:", peerId);
+      console.log("Screen started by:", peerId);
     });
-      
+
     socket.on("screen-stopped", () => {
-        console.log("Screen stopped");
+      console.log("Screen stopped");
     });
 
     socket.on("mic-toggled", ({ peerId, micEnabled }) => {
@@ -207,7 +208,7 @@ import { v4 as uuid } from "uuid";
         }
       }));
     });
-    
+
     socket.on("cam-toggled", ({ peerId, camEnabled }) => {
       setPeers(prev => ({
         ...prev,
@@ -219,13 +220,13 @@ import { v4 as uuid } from "uuid";
     });
   }
 
-  return { 
-    localStream, 
-    peers, 
-    joinRoom, 
-    startScreenShare, 
-    stopScreenShare, 
-    isSharing, 
+  return {
+    localStream,
+    peers,
+    joinRoom,
+    startScreenShare,
+    stopScreenShare,
+    isSharing,
     screenStream,
     toggleMic,
     toggleCam,
@@ -234,4 +235,4 @@ import { v4 as uuid } from "uuid";
     username
   };
 }
-```
+

@@ -1,4 +1,4 @@
-```javascript
+
 import React from "react";
 import VideoAvatar from "./VideoAvatar";
 
@@ -33,4 +33,4 @@ export default function CouchLayout({ localStream, peers, username }) {
         </div>
     );
 }
-```
+
