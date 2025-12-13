@@ -31,7 +31,9 @@ export default function EnterNamePage() {
             }
         } catch (err) {
             console.error("Error submitting name:", err);
-            alert("Something went wrong! Check console for details.\n" + err.message);
+            // Show the exact URL we tried to hit to debug env vars
+            const targetUrl = `${import.meta.env.VITE_BACKEND_URL || "UNDEFINED (Using localhost)"}/api/rooms/guest`;
+            alert(`Connection Failed!\n\nTrying to reach:\n${targetUrl}\n\nError:\n${err.message}`);
         }
     }
 
