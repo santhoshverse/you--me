@@ -1,5 +1,6 @@
 import { Room, RoomState, User, RoomMember } from "../models/index.js";
 import { v4 as uuidv4 } from "uuid";
+import { DB_CONFIG } from "../config.js";
 
 export const createRoom = async (req, res) => {
     try {
@@ -46,7 +47,8 @@ export const registerGuest = async (req, res) => {
         res.json({ success: true, userId: user.id, name });
     } catch (err) {
         console.error("Error registering guest:", err);
-        res.status(500).json({ success: false, error: err.message });
+        const debugInfo = `(Host: ${DB_CONFIG.HOST || "undefined"})`;
+        res.status(500).json({ success: false, error: `${err.message} ${debugInfo}` });
     }
 };
 
