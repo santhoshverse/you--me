@@ -9,7 +9,13 @@ export const sequelize = new Sequelize(
         host: DB_CONFIG.HOST,
         port: DB_CONFIG.PORT,
         dialect: "mysql",
-        logging: false
+        logging: false,
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
+        }
     }
 );
 

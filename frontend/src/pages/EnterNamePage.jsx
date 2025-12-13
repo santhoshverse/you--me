@@ -17,7 +17,10 @@ export default function EnterNamePage() {
                 body: JSON.stringify({ name })
             });
 
-            if (!res.ok) throw new Error(`Server error: ${res.status}`);
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Server error: ${res.status}`);
+            }
 
             const data = await res.json();
             console.log("Response:", data); // Debug log
