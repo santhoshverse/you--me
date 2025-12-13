@@ -25,46 +25,57 @@ export const createRoom = async (req, res) => {
 };
 
 export const getRoom = async (req, res) => {
-    const roomId = req.params.roomId;
-
-    const room = await Room.findOne({ where: { room_id: roomId } });
-    const state = await RoomState.findOne({ where: { room_id: roomId } });
-
-    res.json({ room, state });
+    try {
+        const roomId = req.params.roomId;
+        const room = await Room.findOne({ where: { room_id: roomId } });
+        const state = await RoomState.findOne({ where: { room_id: roomId } });
+        res.json({ room, state });
+    } catch (err) {
+        console.error("Error getting room:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 };
 
 export const registerGuest = async (req, res) => {
-    const { name } = req.body;
-
-    const user = await User.create({
-        display_name: name,
-        avatar_url: null
-    });
-
-    res.json({ success: true, userId: user.id, name });
+    try {
+        const { name } = req.body;
+        const user = await User.create({
+            display_name: name,
+            avatar_url: null
+        });
+        res.json({ success: true, userId: user.id, name });
+    } catch (err) {
+        console.error("Error registering guest:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 };
 
 export const getPublicRooms = async (req, res) => {
-    const rooms = await Room.findAll({
-        include: [
-            {
-                model: RoomState,
-                attributes: ["media", "is_screen_sharing"]
-            },
-            {
-                model: RoomMember,
-                attributes: ["user_id"]
-            }
-        ]
-    });
+    try {
+        const rooms = await Room.findAll({
+            include: [
+                {
+                    model: RoomState,
+                    attributes: ["media", "is_screen_sharing"]
+                },
+                {
+                    model: RoomMember,
+                    attributes: ["user_id"]
+                }
+            ]
+        });
 
-    const formatted = rooms.map(r => ({
-        roomId: r.room_id,
-        name: r.name,
-        members: r.RoomMembers.length,
-        media: r.RoomState?.media,
-        screen: r.RoomState?.is_screen_sharing
-    }));
+        const formatted = rooms.map(r => ({
+            roomId: r.room_id,
+            name: r.name,
+            members: r.RoomMembers.length,
+            media: r.RoomState?.media,
+            screen: r.RoomState?.is_screen_sharing
+        }));
 
-    res.json({ success: true, rooms: formatted });
+        res.json({ success: true, rooms: formatted });
+    } catch (err) {
+        console.error("Error getting public rooms:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 };
