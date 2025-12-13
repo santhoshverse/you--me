@@ -23,7 +23,7 @@ export default function YouTubePlayer({ roomId }) {
         playerRef.current = new window.YT.Player("yt-player", {
             height: "360",
             width: "640",
-            videoId: videoId,
+            videoId: videoId || "",
             events: {
                 onReady: onPlayerReady,
                 onStateChange: onPlayerStateChange,
