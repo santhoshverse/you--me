@@ -62,13 +62,21 @@ export default function YouTubePlayer({ roomId }) {
     // When host enters a URL
     const addVideo = () => {
         const url = prompt("Enter YouTube URL:");
-        const id = url.split("v=")[1];
-        setVideoId(id);
+        if (!url) return;
 
-        socket.emit("set-media", {
-            roomId,
-            media: { type: "youtube", videoId: id }
-        });
+        // Robust regex for ID extraction (supports v=, youtu.be, embed)
+        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|embed\/))([^&?]*)/);
+        const id = match ? match[1] : null;
+
+        if (id) {
+            setVideoId(id);
+            socket.emit("set-media", {
+                roomId,
+                media: { type: "youtube", videoId: id }
+            });
+        } else {
+            alert("Invalid YouTube URL");
+        }
     };
 
     // Receive events from server
