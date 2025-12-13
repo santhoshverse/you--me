@@ -6,7 +6,8 @@ export default function PublicRoomsPage() {
     const [rooms, setRooms] = useState([]);
 
     function loadRooms() {
-        fetch("http://localhost:4000/api/rooms")
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+        fetch(`${BACKEND_URL}/api/rooms`)
             .then(res => res.json())
             .then(data => {
                 if (data.success) setRooms(data.rooms);
