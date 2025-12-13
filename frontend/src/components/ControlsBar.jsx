@@ -18,6 +18,17 @@ export default function ControlsBar({
             <button onClick={() => toggleCam(roomId)} style={btnStyle}>
                 {camEnabled ? "📷 Cam On" : "🚫 Cam Off"}
             </button>
+
+            {/* Screen Share */}
+            <button onClick={() => alert("Screen Share Feature Coming Soon!")} style={{ ...btnStyle, background: "#e91e63" }}>
+                💻 Share Screen
+            </button>
+
+            {/* Local File */}
+            <label style={{ ...btnStyle, background: "#00bfa5", cursor: "pointer" }}>
+                📂 Local File
+                <input type="file" style={{ display: "none" }} onChange={(e) => alert(`File Selected: ${e.target.files[0]?.name}`)} />
+            </label>
         </div>
     );
 }
