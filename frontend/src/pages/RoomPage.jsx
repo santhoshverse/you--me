@@ -1,5 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
+import { socket } from "../socket";
 import CouchLayout from "../components/CouchLayout";
 import ChatPanel from "../components/ChatPanel";
 import YouTubePlayer from "../components/YouTubePlayer";
@@ -41,7 +42,20 @@ export default function RoomPage() {
         } else if (type === "file") {
             alert(`File selected: ${payload?.name} (Coming Soon)`);
         } else if (type === "youtube") {
-            // YouTube component handles its own internal ID state for now
+            const url = prompt("Enter YouTube URL:");
+            if (url) {
+                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|embed\/))([^&?]*)/);
+                const id = match ? match[1] : null;
+
+                if (id) {
+                    socket.emit("set-media", {
+                        roomId,
+                        media: { type: "youtube", videoId: id }
+                    });
+                } else {
+                    alert("Invalid YouTube URL");
+                }
+            }
         }
     };
 
