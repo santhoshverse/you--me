@@ -1,3 +1,4 @@
+import express from "express";
 import { createRoom, getRoom, registerGuest, getPublicRooms } from "../controllers/roomController.js";
 
 const router = express.Router();
