@@ -26,6 +26,8 @@ export default function RoomPage() {
     } = useWebRTC();
 
     // No local media state needed anymore - everything is driven by the Universal Player via socket
+    // EXCEPT local file playback which is personal
+    const [localVideoUrl, setLocalVideoUrl] = React.useState(null);
 
     React.useEffect(() => {
         joinRoom(roomId);
@@ -42,7 +44,10 @@ export default function RoomPage() {
 
     // Keep Sidebar callbacks compatible, though they're less critical now
     const handleSelectMedia = (type, payload) => {
-        if (type === "screen") {
+        if (type === "file" && payload) {
+            const url = URL.createObjectURL(payload);
+            setLocalVideoUrl(url);
+        } else if (type === "screen") {
             // Screen share logic remains separate or integrated based on future reqs, 
             // but current "screen" type in sidebar likely triggers webRTC screen share.
             // Actually, the original MediaArea had specific logic for "screen".
