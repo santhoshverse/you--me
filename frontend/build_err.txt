@@ -1,0 +1,25 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+/couch.png referenced in /couch.png didn't resolve at build time, it will remain unchanged to be resolved at runtime
+[31mx[39m Build failed in 516ms
+[31merror during build:
+[31msrc/pages/RoomPage.jsx (8:7): "default" is not exported by "src/hooks/useWebRTC.js", imported by "src/pages/RoomPage.jsx".[31m
+file: [36mC:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/src/pages/RoomPage.jsx:8:7[31m
+[33m
+ 6: import ScreenShareButton from "../components/ScreenShareButton";
+ 7: import ControlsBar from "../components/ControlsBar";
+ 8: import useWebRTC from "../hooks/useWebRTC";
+           ^
+ 9: 
+10: export default function RoomPage() {
+[31m
+    at getRollupError (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:16956:16)
+    at Module.traceVariable (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17412:29)
+    at ModuleScope.findVariable (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15076:39)
+    at FunctionScope.findVariable (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at Identifier.bind (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5423:40)
+    at CallExpression.bind (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:2813:23)
+    at CallExpression.bind (file:///C:/Users/SANTHOSH/OneDrive/Documents/y_ouandme/frontend/node_modules/rollup/dist/es/shared/node-entry.js:12123:15)[39m
