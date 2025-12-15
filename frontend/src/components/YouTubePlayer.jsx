@@ -50,8 +50,14 @@ export default function YouTubePlayer({ roomId }) {
         console.log("YT Player Ready");
     }
 
+    const isRemoteUpdate = useRef(false);
+
     function onPlayerStateChange(event) {
         if (!isHost || !playerRef.current) return;
+
+        // Block updates if they come from remote sync
+        if (isRemoteUpdate.current) return;
+
         // Basic sync for YouTube (only if active)
         const time = playerRef.current.getCurrentTime();
         if (event.data === window.YT.PlayerState.PLAYING) {
@@ -106,13 +112,25 @@ export default function YouTubePlayer({ roomId }) {
             // Only sync if in YouTube mode and player exists
             if (playerRef.current && typeof playerRef.current.seekTo === "function") {
                 const { time, isPlaying } = action;
+
+                // Set lock to prevent this change from triggering an emit
+                isRemoteUpdate.current = true;
+
                 const now = Date.now();
                 const travel = (now - action.updatedAt) / 1000;
                 const syncedTime = time + travel;
 
-                playerRef.current.seekTo(syncedTime, true);
+                if (Math.abs(playerRef.current.getCurrentTime() - syncedTime) > 0.5) {
+                    playerRef.current.seekTo(syncedTime, true);
+                }
+
                 if (isPlaying) playerRef.current.playVideo();
                 else playerRef.current.pauseVideo();
+
+                // Release lock after a short delay to allow state to settle
+                setTimeout(() => {
+                    isRemoteUpdate.current = false;
+                }, 1000);
             }
         });
 

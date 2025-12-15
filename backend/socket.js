@@ -79,7 +79,7 @@ export function socketHandler(io) {
                 { where: { room_id: roomId } }
             );
 
-            io.to(roomId).emit("player-action", action);
+            socket.to(roomId).emit("player-action", action);
         });
 
         socket.on("toggle-mic", ({ roomId, peerId, micEnabled }) => {
