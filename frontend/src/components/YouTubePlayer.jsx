@@ -191,9 +191,11 @@ export default function YouTubePlayer({ roomId }) {
             {/* Web Video Player */}
             {webVideo && (
                 <video
+                    key={webVideo}
                     src={webVideo}
                     controls
                     autoPlay
+                    playsInline
                     style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 />
             )}

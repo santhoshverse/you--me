@@ -54,8 +54,8 @@ export default function SideBar({
         }}>
             <style>
                 {`
-                    button:active { transform: scale(0.9) !important; }
-                    button:hover { transform: scale(1.1); }
+                    .sidebar-btn:active { transform: scale(0.9) !important; }
+                    .sidebar-btn:hover { transform: scale(1.1); }
                 `}
             </style>
 
@@ -64,6 +64,7 @@ export default function SideBar({
             <div style={{ marginBottom: "auto", width: "100%" }}>
                 {/* Mic */}
                 <button
+                    className="sidebar-btn"
                     onClick={() => toggleMic(roomId)}
                     style={micEnabled ? activeStyle : inactiveStyle}
                     title={micEnabled ? "Mute Mic" : "Unmute Mic"}
@@ -73,6 +74,7 @@ export default function SideBar({
 
                 {/* Cam */}
                 <button
+                    className="sidebar-btn"
                     onClick={() => toggleCam(roomId)}
                     style={camEnabled ? activeStyle : inactiveStyle}
                     title={camEnabled ? "Turn Cam Off" : "Turn Cam On"}
@@ -83,17 +85,17 @@ export default function SideBar({
                 <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
 
                 {/* YouTube */}
-                <button onClick={() => onSelectMedia("youtube")} style={btnStyle} title="Watch YouTube">
+                <button className="sidebar-btn" onClick={() => onSelectMedia("youtube")} style={btnStyle} title="Watch YouTube">
                     📺
                 </button>
 
                 {/* Website */}
-                <button onClick={() => onSelectMedia("web")} style={btnStyle} title="Browse Website">
+                <button className="sidebar-btn" onClick={() => onSelectMedia("web")} style={btnStyle} title="Browse Website">
                     🌐
                 </button>
 
                 {/* File */}
-                <label style={btnStyle} title="Play Local File">
+                <label className="sidebar-btn" style={btnStyle} title="Play Local File">
                     📂
                     <input
                         type="file"
@@ -105,6 +107,7 @@ export default function SideBar({
 
             {/* Invite */}
             <button
+                className="sidebar-btn"
                 onClick={handleCopy}
                 style={{ ...btnStyle, background: copied ? "#00b894" : "#0099ff", width: "50px", height: "50px", fontSize: "20px" }}
                 title="Copy Invite Link"
