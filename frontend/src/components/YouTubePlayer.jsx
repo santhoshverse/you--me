@@ -1,13 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 
-export default function YouTubePlayer({ roomId }) {
+export default function YouTubePlayer({ roomId, localVideoUrl }) {
     const playerRef = useRef(null);
     const ytContainerRef = useRef(null); // Ref for the safe wrapper
     const [videoId, setVideoId] = useState(null);
     const [webVideo, setWebVideo] = useState(null);
     const [iframeURL, setIframeURL] = useState(null);
-    const [isHost] = useState(true); // later replace with role check
+    const [playerMode, setPlayerMode] = useState("idle"); // idle, youtube, video, website
+
+    // Handle Local Video Prop
+    useEffect(() => {
+        if (localVideoUrl) {
+            // Clear others
+            setVideoId(null);
+            setIframeURL(null);
+            // Set video
+            setWebVideo(localVideoUrl);
+        }
+    }, [localVideoUrl]);
 
     function getMediaType(url) {
         if (!url) return null;

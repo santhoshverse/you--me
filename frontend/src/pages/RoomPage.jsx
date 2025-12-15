@@ -106,7 +106,7 @@ export default function RoomPage() {
                 <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
 
                     {/* The Universal Player */}
-                    <YouTubePlayer roomId={roomId} />
+                    <YouTubePlayer roomId={roomId} localVideoUrl={localVideoUrl} />
 
                     {/* Screen Share Overlay (Preserving functionality if active) */}
                     {screenStream && (
