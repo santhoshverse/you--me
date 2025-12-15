@@ -25,11 +25,16 @@ export default function useWebRTC() {
 
   useEffect(() => {
     async function startCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      });
-      setLocalStream(stream);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        setLocalStream(stream);
+      } catch (err) {
+        console.warn("⚠️ User denied media permissions or device not found:", err);
+        // Optionally set a state here to show a UI message
+      }
     }
     startCamera();
   }, []);
@@ -98,23 +103,27 @@ export default function useWebRTC() {
   }
 
   async function startScreenShare(roomId) {
-    const displayStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false
-    });
-
-    setScreenStream(displayStream);
-    setIsSharing(true);
-
-    Object.values(peerConnections.current).forEach(pc => {
-      displayStream.getTracks().forEach(track => {
-        pc.addTrack(track, displayStream);
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false
       });
-    });
 
-    socket.emit("screen-started", { roomId, peerId: peerId.current });
+      setScreenStream(displayStream);
+      setIsSharing(true);
 
-    displayStream.getVideoTracks()[0].onended = () => stopScreenShare(roomId);
+      Object.values(peerConnections.current).forEach(pc => {
+        displayStream.getTracks().forEach(track => {
+          pc.addTrack(track, displayStream);
+        });
+      });
+
+      socket.emit("screen-started", { roomId, peerId: peerId.current });
+
+      displayStream.getVideoTracks()[0].onended = () => stopScreenShare(roomId);
+    } catch (err) {
+      console.warn("⚠️ Screen share permission denied or cancelled:", err);
+    }
   }
 
   function stopScreenShare(roomId) {
