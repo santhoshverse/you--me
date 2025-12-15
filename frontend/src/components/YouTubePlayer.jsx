@@ -202,16 +202,45 @@ export default function YouTubePlayer({ roomId }) {
 
             {/* Website Viewer */}
             {iframeURL && (
-                <iframe
-                    src={iframeURL}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        border: "none",
-                        background: "white"
-                    }}
-                    title="Shared Browser"
-                />
+                <div style={{ width: "100%", height: "100%", position: "relative" }}>
+                    <div style={{
+                        position: "absolute",
+                        top: "10px",
+                        right: "10px",
+                        zIndex: 10,
+                        background: "rgba(0,0,0,0.7)",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        color: "white",
+                        pointerEvents: "none" // Allow clicks to pass through except for button
+                    }}>
+                        <span style={{ marginRight: "8px" }}>If site refuses to load:</span>
+                        <a
+                            href={iframeURL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: "#00b894",
+                                fontWeight: "bold",
+                                pointerEvents: "auto",
+                                textDecoration: "none"
+                            }}
+                        >
+                            Open in New Tab ↗
+                        </a>
+                    </div>
+                    <iframe
+                        src={iframeURL}
+                        style={{
+                            width: "100%",
+                            height: "100%",
+                            border: "none",
+                            background: "white"
+                        }}
+                        title="Shared Browser"
+                    />
+                </div>
             )}
         </div>
     );
