@@ -3,6 +3,7 @@ import { socket } from "../socket";
 
 export default function YouTubePlayer({ roomId }) {
     const playerRef = useRef(null);
+    const ytContainerRef = useRef(null); // Ref for the safe wrapper
     const [videoId, setVideoId] = useState(null);
     const [webVideo, setWebVideo] = useState(null);
     const [iframeURL, setIframeURL] = useState(null);
@@ -21,20 +22,45 @@ export default function YouTubePlayer({ roomId }) {
             const tag = document.createElement("script");
             tag.src = "https://www.youtube.com/iframe_api";
             document.body.appendChild(tag);
-        } else {
+        }
+    }, []); // Only run once on mount
+
+    // Init player when videoId is set and container is ready
+    useEffect(() => {
+        if (videoId && window.YT && window.YT.Player) {
             initPlayer();
+        } else if (videoId && !window.YT) {
+            // If API not ready yet, wait for it
+            window.onYouTubeIframeAPIReady = initPlayer;
         }
 
-        window.onYouTubeIframeAPIReady = initPlayer;
-    }, []);
+        return () => {
+            // Cleanup: destroy player when unmounting or switching video
+            if (playerRef.current) {
+                try {
+                    playerRef.current.destroy();
+                } catch (e) { console.warn("Player destroy failed", e); }
+                playerRef.current = null;
+            }
+        };
+    }, [videoId]);
+
 
     function initPlayer() {
-        if (!document.getElementById("yt-player-placeholder")) return; // Guard if not in YT mode
+        if (!ytContainerRef.current) return;
 
-        playerRef.current = new window.YT.Player("yt-player-placeholder", {
+        // Safety: Ensure any previous iframe is gone before creating new one
+        ytContainerRef.current.innerHTML = "";
+
+        // Create a neat placeholder DIV inside our React-controlled container
+        // React manages 'ytContainerRef', YouTube manages 'placeholder'
+        const placeholder = document.createElement("div");
+        ytContainerRef.current.appendChild(placeholder);
+
+        playerRef.current = new window.YT.Player(placeholder, {
             height: "100%",
             width: "100%",
-            videoId: videoId || "dQw4w9WgXcQ",
+            videoId: videoId,
             playerVars: {
                 playsinline: 1,
                 origin: window.location.origin,
@@ -86,6 +112,12 @@ export default function YouTubePlayer({ roomId }) {
             const url = media.url;
             const type = getMediaType(url);
 
+            // Clean up old player if switching types
+            if (playerRef.current && type !== "youtube") {
+                try { playerRef.current.destroy(); } catch (e) { }
+                playerRef.current = null;
+            }
+
             // Reset all first
             setVideoId(null);
             setWebVideo(null);
@@ -95,11 +127,12 @@ export default function YouTubePlayer({ roomId }) {
                 const id = getYouTubeID(url);
                 if (id) {
                     setVideoId(id);
-                    // If player instance exists, load it
-                    if (playerRef.current && typeof playerRef.current.loadVideoById === "function") {
-                        playerRef.current.loadVideoById(id);
-                    }
-                    // Note: If player was destroyed (conditionally unmounted), it will re-init via useEffect below
+                    // If we already have a player instance, just load new video
+                    // BUT: Since we toggle `videoId` state, the effect might re-run.
+                    // Actually, setting videoId to null then back to id in same tick *might* loop or flicker.
+                    // Better to just set it. 
+                    // However, for the crash fix, doing a fresh init is safer.
+                    // Let's rely on the Effect to build/rebuild the player for now to be safe.
                 }
             } else if (type === "video") {
                 setWebVideo(url);
@@ -120,6 +153,7 @@ export default function YouTubePlayer({ roomId }) {
                 const travel = (now - action.updatedAt) / 1000;
                 const syncedTime = time + travel;
 
+                // Only seek if diff is significant to avoid stutter
                 if (Math.abs(playerRef.current.getCurrentTime() - syncedTime) > 0.5) {
                     playerRef.current.seekTo(syncedTime, true);
                 }
@@ -140,15 +174,6 @@ export default function YouTubePlayer({ roomId }) {
         };
     }, []);
 
-    // Re-init player if we switch back to YouTube mode and DOM element is ready
-    useEffect(() => {
-        if (videoId && !playerRef.current && window.YT) {
-            // Giving a slight timeout for DOM to render div
-            setTimeout(initPlayer, 100);
-        }
-    }, [videoId]);
-
-
     return (
         <div style={{ textAlign: "center", width: "100%", height: "100%" }}>
 
@@ -160,7 +185,7 @@ export default function YouTubePlayer({ roomId }) {
 
             {/* YouTube */}
             {videoId && (
-                <div id="yt-player-placeholder" style={{ width: "100%", height: "100%" }}></div>
+                <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }}></div>
             )}
 
             {/* Web Video Player */}
