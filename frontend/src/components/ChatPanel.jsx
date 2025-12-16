@@ -112,7 +112,7 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                         {Array.from(typingUsers).join(", ")} is typing...
                     </div>
                 )}
-                )}
+
             </div>
             <input
                 type="text"
