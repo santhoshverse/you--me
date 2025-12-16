@@ -3,19 +3,23 @@ import { socket } from "../socket";
 
 export default function YouTubePlayer({ roomId, localVideoUrl }) {
     const playerRef = useRef(null);
-    const ytContainerRef = useRef(null); // Ref for the safe wrapper
+    const ytContainerRef = useRef(null);
+    const localVideoRef = useRef(null);
+    const isRemoteUpdate = useRef(false);
+
     const [videoId, setVideoId] = useState(null);
     const [webVideo, setWebVideo] = useState(null);
     const [iframeURL, setIframeURL] = useState(null);
-    const [playerMode, setPlayerMode] = useState("idle"); // idle, youtube, video, website
 
-    // Handle Local Video Prop
+    // Is current user the host? (Strictly speaking, anyone can control now, but we check if we should emit)
+    // For now, allow anyone to control.
+    const isHost = true;
+
+    // Handle Local Video Prop (from sidebar or file picker)
     useEffect(() => {
         if (localVideoUrl) {
-            // Clear others
             setVideoId(null);
             setIframeURL(null);
-            // Set video
             setWebVideo(localVideoUrl);
         }
     }, [localVideoUrl]);
@@ -24,47 +28,41 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
         if (!url) return null;
         if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
         if (url.match(/\.(mp4|webm|ogg|mov)$/i)) return "video";
-        return "website"; // any other URL
+        return "website";
     }
 
-    // Load YouTube API script
+    function getYouTubeID(url) {
+        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|embed\/))([^&?]*)/);
+        return match ? match[1] : null;
+    }
+
+    // Load YouTube API
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement("script");
             tag.src = "https://www.youtube.com/iframe_api";
             document.body.appendChild(tag);
         }
-    }, []); // Only run once on mount
+    }, []);
 
-    // Init player when videoId is set and container is ready
+    // Init YouTube Player
     useEffect(() => {
         if (videoId && window.YT && window.YT.Player) {
             initPlayer();
         } else if (videoId && !window.YT) {
-            // If API not ready yet, wait for it
             window.onYouTubeIframeAPIReady = initPlayer;
         }
-
         return () => {
-            // Cleanup: destroy player when unmounting or switching video
             if (playerRef.current) {
-                try {
-                    playerRef.current.destroy();
-                } catch (e) { console.warn("Player destroy failed", e); }
+                try { playerRef.current.destroy(); } catch (e) { }
                 playerRef.current = null;
             }
         };
     }, [videoId]);
 
-
     function initPlayer() {
         if (!ytContainerRef.current) return;
-
-        // Safety: Ensure any previous iframe is gone before creating new one
         ytContainerRef.current.innerHTML = "";
-
-        // Create a neat placeholder DIV inside our React-controlled container
-        // React manages 'ytContainerRef', YouTube manages 'placeholder'
         const placeholder = document.createElement("div");
         ytContainerRef.current.appendChild(placeholder);
 
@@ -72,79 +70,52 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
             height: "100%",
             width: "100%",
             videoId: videoId,
-            playerVars: {
-                playsinline: 1,
-                origin: window.location.origin,
-            },
+            playerVars: { playsinline: 1, origin: window.location.origin },
             events: {
-                onReady: onPlayerReady,
                 onStateChange: onPlayerStateChange,
             },
         });
     }
 
-    function onPlayerReady() {
-        console.log("YT Player Ready");
-    }
-
-    const isRemoteUpdate = useRef(false);
-
     function onPlayerStateChange(event) {
-        if (!isHost || !playerRef.current) return;
-
-        // Block updates if they come from remote sync
-        if (isRemoteUpdate.current) return;
-
-        // Basic sync for YouTube (only if active)
+        if (!playerRef.current || isRemoteUpdate.current) return;
         const time = playerRef.current.getCurrentTime();
         if (event.data === window.YT.PlayerState.PLAYING) {
-            socket.emit("player-action", {
-                roomId,
-                action: { type: "play", time, isPlaying: true },
-            });
+            socket.emit("player-action", { roomId, action: { type: "play", time, isPlaying: true } });
         }
         if (event.data === window.YT.PlayerState.PAUSED) {
-            socket.emit("player-action", {
-                roomId,
-                action: { type: "pause", time, isPlaying: false },
-            });
+            socket.emit("player-action", { roomId, action: { type: "pause", time, isPlaying: false } });
         }
     }
 
-    // Reuse helper to extract ID safely
-    function getYouTubeID(url) {
-        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/|embed\/))([^&?]*)/);
-        return match ? match[1] : null;
-    }
+    // Local Video Events
+    const handleVideoEvent = (type) => {
+        if (!localVideoRef.current || isRemoteUpdate.current) return;
+        const video = localVideoRef.current;
+        const time = video.currentTime;
+        const isPlaying = !video.paused;
 
-    // Receive events from server
+        socket.emit("player-action", { roomId, action: { type, time, isPlaying } });
+    };
+
+    // Socket Listeners
     useEffect(() => {
         socket.on("media-updated", ({ media }) => {
             const url = media.url;
             const type = getMediaType(url);
 
-            // Clean up old player if switching types
             if (playerRef.current && type !== "youtube") {
                 try { playerRef.current.destroy(); } catch (e) { }
                 playerRef.current = null;
             }
 
-            // Reset all first
             setVideoId(null);
             setWebVideo(null);
             setIframeURL(null);
 
             if (type === "youtube") {
                 const id = getYouTubeID(url);
-                if (id) {
-                    setVideoId(id);
-                    // If we already have a player instance, just load new video
-                    // BUT: Since we toggle `videoId` state, the effect might re-run.
-                    // Actually, setting videoId to null then back to id in same tick *might* loop or flicker.
-                    // Better to just set it. 
-                    // However, for the crash fix, doing a fresh init is safer.
-                    // Let's rely on the Effect to build/rebuild the player for now to be safe.
-                }
+                if (id) setVideoId(id);
             } else if (type === "video") {
                 setWebVideo(url);
             } else if (type === "website") {
@@ -153,30 +124,33 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
         });
 
         socket.on("player-action", (action) => {
-            // Only sync if in YouTube mode and player exists
+            const { time, isPlaying } = action;
+            isRemoteUpdate.current = true; // Lock
+
+            // YouTube Sync
             if (playerRef.current && typeof playerRef.current.seekTo === "function") {
-                const { time, isPlaying } = action;
-
-                // Set lock to prevent this change from triggering an emit
-                isRemoteUpdate.current = true;
-
                 const now = Date.now();
-                const travel = (now - action.updatedAt) / 1000;
-                const syncedTime = time + travel;
-
-                // Only seek if diff is significant to avoid stutter
-                if (Math.abs(playerRef.current.getCurrentTime() - syncedTime) > 0.5) {
-                    playerRef.current.seekTo(syncedTime, true);
+                // Simple prediction to reduce lag perception
+                // const travel = (now - action.updatedAt) / 1000; 
+                // const syncedTime = time + travel;
+                if (Math.abs(playerRef.current.getCurrentTime() - time) > 1.0) {
+                    playerRef.current.seekTo(time, true);
                 }
-
                 if (isPlaying) playerRef.current.playVideo();
                 else playerRef.current.pauseVideo();
-
-                // Release lock after a short delay to allow state to settle
-                setTimeout(() => {
-                    isRemoteUpdate.current = false;
-                }, 1000);
             }
+
+            // Local Video Sync
+            if (localVideoRef.current) {
+                const video = localVideoRef.current;
+                if (Math.abs(video.currentTime - time) > 0.5) {
+                    video.currentTime = time;
+                }
+                if (isPlaying) video.play().catch(() => { });
+                else video.pause();
+            }
+
+            setTimeout(() => { isRemoteUpdate.current = false; }, 800);
         });
 
         return () => {
@@ -187,68 +161,33 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
 
     return (
         <div style={{ textAlign: "center", width: "100%", height: "100%" }}>
-
             {!videoId && !webVideo && !iframeURL && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#666" }}>
                     <h3>Waiting for content...</h3>
                 </div>
             )}
 
-            {/* YouTube */}
-            {videoId && (
-                <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }}></div>
-            )}
+            {videoId && <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }}></div>}
 
-            {/* Web Video Player */}
             {webVideo && (
                 <video
+                    ref={localVideoRef}
                     key={webVideo}
                     src={webVideo}
                     controls
-                    autoPlay
                     playsInline
                     style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    onPlay={() => handleVideoEvent("play")}
+                    onPause={() => handleVideoEvent("pause")}
+                    onSeeked={() => handleVideoEvent("seek")}
                 />
             )}
 
-            {/* Website Viewer */}
             {iframeURL && (
                 <div style={{ width: "100%", height: "100%", position: "relative" }}>
-                    <div style={{
-                        position: "absolute",
-                        top: "10px",
-                        right: "10px",
-                        zIndex: 10,
-                        background: "rgba(0,0,0,0.7)",
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        color: "white",
-                        pointerEvents: "none" // Allow clicks to pass through except for button
-                    }}>
-                        <span style={{ marginRight: "8px" }}>If site refuses to load:</span>
-                        <a
-                            href={iframeURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: "#00b894",
-                                fontWeight: "bold",
-                                pointerEvents: "auto",
-                                textDecoration: "none"
-                            }}
-                        >
-                            Open in New Tab ↗
-                        </a>
-                    </div>
                     <iframe
                         src={iframeURL}
-                        style={{
-                            width: "100%",
-                            height: "100%",
-                            border: "none",
-                            background: "white"
-                        }}
+                        style={{ width: "100%", height: "100%", border: "none", background: "white" }}
                         title="Shared Browser"
                     />
                 </div>

@@ -7,6 +7,8 @@ import YouTubePlayer from "../components/YouTubePlayer";
 import SideBar from "../components/SideBar";
 import useWebRTC from "../hooks/useWebRTC";
 
+import FloatingReactions from "../components/FloatingReactions";
+
 export default function RoomPage() {
     const { roomId } = useParams();
 
@@ -33,6 +35,8 @@ export default function RoomPage() {
         joinRoom(roomId);
     }, [roomId]);
 
+    // ... (rest of code)
+
     function handleURL(url) {
         if (!url) return;
 
@@ -48,25 +52,7 @@ export default function RoomPage() {
             const url = URL.createObjectURL(payload);
             setLocalVideoUrl(url);
         } else if (type === "screen") {
-            // Screen share logic remains separate or integrated based on future reqs, 
-            // but current "screen" type in sidebar likely triggers webRTC screen share.
-            // Actually, the original MediaArea had specific logic for "screen".
-            // The user ignored screen share in the new request.
-            // I will leave screen share logic aside for a moment, but since I am "Inserting new code statements",
-            // I notice the user's snippet replaced "media-updated" logic. 
-            // Let's keep screen share trigger separate in Sidebar if it was there?
-            // Original: Screen share was in Sidebar but just alerted "Coming Soon" in one spot, 
-            // but `mediaType === 'screen'` showed `screenStream`.
-            // I should probably keep the screen share video element if `screenStream` is present? 
-            // The user said: "Replace your return JSX" with just the player.
-            // But screen share is a separate WebRTC feature. 
-            // I will add the handleURL input, and use the Universal Player. 
-            // I will ALSO render existing Screen Share conditionally if active, to not break that feature if it's working.
-            // Wait, user's request: "Now your feature works like this...". They didn't mention screen share.
-            // I will strictly follow their JSX for the media area but add back screen share if I see it fits, or trust their "Universal Player" handles the main "media" content.
-            // Screen share is usually an overlay or separate mode. 
-            // Original RoomPage had: `{mediaType === "screen" && screenStream && (...)`.
-            // I will add screen share back as a safeguard if `screenStream` is active.
+            // Screen share logic
         } else {
             // For buttons that might still be clicked
             const url = prompt("Enter URL:");
@@ -109,6 +95,9 @@ export default function RoomPage() {
                 chatInput={chatInput}
                 setChatInput={setChatInput}
                 sendMessage={sendMessage}
+                socket={socket}
+                roomId={roomId}
+                username={username}
             />
 
             {/* Center: Main Content Area */}
@@ -139,7 +128,10 @@ export default function RoomPage() {
                 </div>
 
                 {/* Media Area (Universal Player) */}
-                <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+
+                    {/* Floating Reactions Overlay */}
+                    <FloatingReactions roomId={roomId} />
 
                     {/* The Universal Player */}
                     <YouTubePlayer roomId={roomId} localVideoUrl={localVideoUrl} />
