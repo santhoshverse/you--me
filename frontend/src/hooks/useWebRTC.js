@@ -43,15 +43,37 @@ export default function useWebRTC() {
     if (!localStream) return;
 
     const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setMicEnabled(audioTrack.enabled);
+
+    if (audioTrack.enabled) {
+      audioTrack.stop(); // fully turn off mic
+      setMicEnabled(false);
 
       socket.emit("toggle-mic", {
         roomId,
         peerId: peerId.current,
-        micEnabled: audioTrack.enabled,
+        micEnabled: false
       });
+
+    } else {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(newStream => {
+          const newAudioTrack = newStream.getAudioTracks()[0];
+
+          Object.values(peerConnections.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === "audio");
+            if (sender) sender.replaceTrack(newAudioTrack);
+          });
+
+          localStream.addTrack(newAudioTrack);
+
+          setMicEnabled(true);
+
+          socket.emit("toggle-mic", {
+            roomId,
+            peerId: peerId.current,
+            micEnabled: true
+          });
+        });
     }
   }
 
@@ -59,15 +81,41 @@ export default function useWebRTC() {
     if (!localStream) return;
 
     const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setCamEnabled(videoTrack.enabled);
+
+    if (videoTrack.enabled) {
+      // Turn off camera fully
+      videoTrack.stop();
+      setCamEnabled(false);
 
       socket.emit("toggle-cam", {
         roomId,
         peerId: peerId.current,
-        camEnabled: videoTrack.enabled,
+        camEnabled: false
       });
+
+    } else {
+      // Turn camera back on
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(newStream => {
+          const newVideoTrack = newStream.getVideoTracks()[0];
+
+          // Replace track in WebRTC connection
+          Object.values(peerConnections.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === "video");
+            if (sender) sender.replaceTrack(newVideoTrack);
+          });
+
+          // Replace local stream
+          localStream.addTrack(newVideoTrack);
+
+          setCamEnabled(true);
+
+          socket.emit("toggle-cam", {
+            roomId,
+            peerId: peerId.current,
+            camEnabled: true
+          });
+        });
     }
   }
 

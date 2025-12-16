@@ -74,11 +74,42 @@ export default function RoomPage() {
         }
     };
 
+    // Chat State
+    const [messages, setMessages] = React.useState([]);
+    const [chatInput, setChatInput] = React.useState("");
+
+    React.useEffect(() => {
+        socket.on("chat-message", (msg) => {
+            setMessages(prev => [...prev, msg]);
+        });
+
+        return () => {
+            socket.off("chat-message");
+        }
+    }, []);
+
+    function sendMessage() {
+        if (!chatInput.trim()) return;
+
+        socket.emit("chat-message", {
+            roomId,
+            message: chatInput,
+            username: localStorage.getItem("name") || "Guest",
+        });
+
+        setChatInput("");
+    }
+
     return (
         <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
 
             {/* Left: Chat Panel */}
-            <ChatPanel />
+            <ChatPanel
+                messages={messages}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                sendMessage={sendMessage}
+            />
 
             {/* Center: Main Content Area */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>

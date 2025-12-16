@@ -36,6 +36,15 @@ export function socketHandler(io) {
             socket.to(roomId).emit("new-peer", { peerId, username: socket.username });
         });
 
+        // Chat Message
+        socket.on("chat-message", ({ roomId, message, username }) => {
+            io.to(roomId).emit("chat-message", {
+                message,
+                username,
+                time: Date.now(),
+            });
+        });
+
         // Offer
         socket.on("offer", ({ toPeerId, sdp, fromPeerId }) => {
             const toSocket = peerToSocket.get(toPeerId);
@@ -108,6 +117,19 @@ export function socketHandler(io) {
             );
 
             socket.to(roomId).emit("screen-stopped");
+        });
+
+        // Social Features
+        socket.on("typing", ({ roomId, isTyping, username }) => {
+            socket.to(roomId).emit("typing", { peerId: socket.peerId, isTyping, username });
+        });
+
+        socket.on("chat-reaction", ({ roomId, messageId, reaction, username }) => {
+            io.to(roomId).emit("chat-reaction", { messageId, reaction, username });
+        });
+
+        socket.on("floating-emoji", ({ roomId, emoji }) => {
+            socket.to(roomId).emit("floating-emoji", { emoji, peerId: socket.peerId });
         });
 
         socket.on("disconnect", async () => {
