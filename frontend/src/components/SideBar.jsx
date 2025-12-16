@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 export default function SideBar({
     toggleMic, toggleCam, micEnabled, camEnabled, roomId,
-    onSelectMedia, isHost, onMuteAll
+    onSelectMedia, isHost, onMuteAll, onSetBackground
 }) {
     const [copied, setCopied] = useState(false);
 
@@ -103,6 +103,22 @@ export default function SideBar({
                         onChange={(e) => onSelectMedia("file", e.target.files[0])}
                     />
                 </label>
+
+                <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
+
+                {/* Virtual Backgrounds */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+                    <button className="sidebar-btn" style={{ ...btnStyle, fontSize: "16px", height: "40px" }} onClick={() => onSetBackground("none")} title="No Background">
+                        🚫BG
+                    </button>
+                    <button className="sidebar-btn" style={{ ...btnStyle, fontSize: "16px", height: "40px" }} onClick={() => onSetBackground("blur")} title="Blur Background">
+                        💧
+                    </button>
+                    <button className="sidebar-btn" style={{ ...btnStyle, fontSize: "16px", height: "40px" }} onClick={() => onSetBackground("image")} title="Image Background">
+                        🖼️
+                    </button>
+                </div>
+
 
                 {/* Host Controls */}
                 {isHost && (
