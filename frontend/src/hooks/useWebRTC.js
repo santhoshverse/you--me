@@ -53,18 +53,17 @@ export default function useWebRTC() {
   function toggleMic(roomId) {
     if (!localStream) return;
 
-    const audioTrack = localStream.getAudioTracks()[0];
-
-    if (audioTrack.enabled) {
-      audioTrack.stop();
+    if (micEnabled) {
+      // Turn OFF
+      localStream.getAudioTracks().forEach(track => track.stop());
       setMicEnabled(false);
       socket.emit("toggle-mic", {
         roomId,
         peerId: peerId.current,
         micEnabled: false
       });
-
     } else {
+      // Turn ON
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(newStream => {
           const newAudioTrack = newStream.getAudioTracks()[0];
@@ -74,11 +73,10 @@ export default function useWebRTC() {
             if (sender) sender.replaceTrack(newAudioTrack);
           });
 
-          // Replace track in local stream (remove old, add new)
-          // Actually, removal stops it? No, we stopped old one.
-          // Better to construct new stream or modify existing
-          localStream.removeTrack(audioTrack);
-          localStream.addTrack(newAudioTrack);
+          // Recreate stream to force UI update
+          const videoTracks = localStream.getVideoTracks();
+          const newLocalStream = new MediaStream([newAudioTrack, ...videoTracks]);
+          setLocalStream(newLocalStream);
 
           setMicEnabled(true);
           socket.emit("toggle-mic", {
@@ -86,17 +84,17 @@ export default function useWebRTC() {
             peerId: peerId.current,
             micEnabled: true
           });
-        });
+        })
+        .catch(err => console.error("Error accessing mic:", err));
     }
   }
 
   function toggleCam(roomId) {
     if (!localStream) return;
 
-    const videoTrack = localStream.getVideoTracks()[0];
-
-    if (videoTrack.enabled) {
-      videoTrack.stop();
+    if (camEnabled) {
+      // Turn OFF
+      localStream.getVideoTracks().forEach(track => track.stop());
       setCamEnabled(false);
       socket.emit("toggle-cam", {
         roomId,
@@ -104,6 +102,7 @@ export default function useWebRTC() {
         camEnabled: false
       });
     } else {
+      // Turn ON
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(newStream => {
           const newVideoTrack = newStream.getVideoTracks()[0];
@@ -113,8 +112,10 @@ export default function useWebRTC() {
             if (sender) sender.replaceTrack(newVideoTrack);
           });
 
-          localStream.removeTrack(videoTrack);
-          localStream.addTrack(newVideoTrack);
+          // Recreate stream to force UI update
+          const audioTracks = localStream.getAudioTracks();
+          const newLocalStream = new MediaStream([newVideoTrack, ...audioTracks]);
+          setLocalStream(newLocalStream);
 
           setCamEnabled(true);
           socket.emit("toggle-cam", {
@@ -122,7 +123,8 @@ export default function useWebRTC() {
             peerId: peerId.current,
             camEnabled: true
           });
-        });
+        })
+        .catch(err => console.error("Error accessing cam:", err));
     }
   }
 
