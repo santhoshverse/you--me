@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
+import { useEffect, useRef, useState } from 'react';
+import * as mpSelfieSegmentation from '@mediapipe/selfie_segmentation';
 
 export default function useVirtualBackground() {
     const [segmentation, setSegmentation] = useState(null);
@@ -9,6 +10,21 @@ export default function useVirtualBackground() {
 
     // Config
     useEffect(() => {
+        // Defensive import resolution for Vite/Rollup production builds
+        let SelfieSegmentation = mpSelfieSegmentation.SelfieSegmentation;
+        if (!SelfieSegmentation && mpSelfieSegmentation.default) {
+            SelfieSegmentation = mpSelfieSegmentation.default.SelfieSegmentation;
+        }
+        // Fallback: Check if the default export ITSELF is the class (unlikely for this pkg but possible)
+        if (!SelfieSegmentation && typeof mpSelfieSegmentation.default === 'function') {
+            SelfieSegmentation = mpSelfieSegmentation.default;
+        }
+
+        if (!SelfieSegmentation) {
+            console.error("Failed to resolve SelfieSegmentation class", mpSelfieSegmentation);
+            return;
+        }
+
         const selfieSegmentation = new SelfieSegmentation({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
         });
