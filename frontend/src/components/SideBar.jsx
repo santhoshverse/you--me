@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 export default function SideBar({
     toggleMic, toggleCam, micEnabled, camEnabled, roomId,
-    onSelectMedia
+    onSelectMedia, isHost, onMuteAll
 }) {
     const [copied, setCopied] = useState(false);
 
@@ -103,6 +103,21 @@ export default function SideBar({
                         onChange={(e) => onSelectMedia("file", e.target.files[0])}
                     />
                 </label>
+
+                {/* Host Controls */}
+                {isHost && (
+                    <>
+                        <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
+                        <button
+                            className="sidebar-btn"
+                            onClick={onMuteAll}
+                            style={{ ...btnStyle, background: "#d63031" }}
+                            title="Mute Everyone"
+                        >
+                            🔇🛑
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* Invite */}

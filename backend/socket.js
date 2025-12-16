@@ -5,6 +5,9 @@ const peerToSocket = new Map();
 export function socketHandler(io) {
     console.log("Using TURN server for ICE fallback.");
 
+    // In-memory fallback for hosts
+    const roomHosts = new Map(); // roomId -> peerId
+
     io.on("connection", (socket) => {
         console.log("🔌 User connected", socket.id);
 
@@ -20,21 +23,38 @@ export function socketHandler(io) {
             socket.join(roomId);
             socket.roomId = roomId;
 
-            await RoomMember.create({
-                room_id: roomId,
-                user_id: null, // Socket users are guests for now unless mapped
-                peer_id: peerId
-            });
+            // Set host if first user
+            if (!io.sockets.adapter.rooms.get(roomId) || io.sockets.adapter.rooms.get(roomId).size === 1) {
+                roomHosts.set(roomId, peerId);
+            }
+
+            // Try DB, ignore if fails
+            try {
+                await RoomMember.create({
+                    room_id: roomId,
+                    user_id: null,
+                    peer_id: peerId
+                });
+            } catch (e) { console.warn("DB Error (RoomMember):", e.message); }
 
             // Update everyone about the room change
             io.emit("room-updated");
 
-            const state = await RoomState.findOne({ where: { room_id: roomId } });
-
-            socket.emit("room-state", { state });
+            try {
+                const state = await RoomState.findOne({ where: { room_id: roomId } });
+                socket.emit("room-state", { state });
+            } catch (e) {
+                // Return default state if DB fails
+                socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } } });
+            }
 
             socket.to(roomId).emit("new-peer", { peerId, username: socket.username });
+
+            // Notify who is host
+            socket.emit("host-update", { hostPeerId: roomHosts.get(roomId) });
         });
+
+        // ... [Chat Message, Offer, Answer, ICE handlers same as before] ...
 
         // Chat Message
         socket.on("chat-message", ({ roomId, message, username }) => {
@@ -71,10 +91,15 @@ export function socketHandler(io) {
 
         // When host sets video
         socket.on("set-media", async ({ roomId, media }) => {
-            await RoomState.update(
-                { media, playback: { time: 0, isPlaying: false, updatedAt: Date.now() } },
-                { where: { room_id: roomId } }
-            );
+            // Check if host? (Optional strictness)
+            // For now allow all, or check roomHosts.get(roomId) === socket.peerId
+
+            try {
+                await RoomState.update(
+                    { media, playback: { time: 0, isPlaying: false, updatedAt: Date.now() } },
+                    { where: { room_id: roomId } }
+                );
+            } catch (e) { console.warn("DB update failed"); }
 
             io.to(roomId).emit("media-updated", { media });
         });
@@ -83,10 +108,12 @@ export function socketHandler(io) {
         socket.on("player-action", async ({ roomId, action }) => {
             action.updatedAt = Date.now();
 
-            await RoomState.update(
-                { playback: action },
-                { where: { room_id: roomId } }
-            );
+            try {
+                await RoomState.update(
+                    { playback: action },
+                    { where: { room_id: roomId } }
+                );
+            } catch (e) { }
 
             socket.to(roomId).emit("player-action", action);
         });
@@ -101,25 +128,45 @@ export function socketHandler(io) {
 
         // Screen Sharing Started
         socket.on("screen-started", async ({ roomId, peerId }) => {
-            await RoomState.update(
-                { is_screen_sharing: true, screen_sharer_peer_id: peerId },
-                { where: { room_id: roomId } }
-            );
+            try {
+                await RoomState.update(
+                    { is_screen_sharing: true, screen_sharer_peer_id: peerId },
+                    { where: { room_id: roomId } }
+                );
+            } catch (e) { }
 
             socket.to(roomId).emit("screen-started", { peerId });
         });
 
         // Screen Sharing Stopped
         socket.on("screen-stopped", async ({ roomId }) => {
-            await RoomState.update(
-                { is_screen_sharing: false, screen_sharer_peer_id: null },
-                { where: { room_id: roomId } }
-            );
+            try {
+                await RoomState.update(
+                    { is_screen_sharing: false, screen_sharer_peer_id: null },
+                    { where: { room_id: roomId } }
+                );
+            } catch (e) { }
 
             socket.to(roomId).emit("screen-stopped");
         });
 
-        // Social Features
+        // Host Controls
+        socket.on("admin-action", ({ roomId, action, targetPeerId }) => {
+            const hostId = roomHosts.get(roomId);
+            if (hostId !== socket.peerId) return; // Only host can do this
+
+            if (action === "kick") {
+                const targetSocketId = peerToSocket.get(targetPeerId);
+                if (targetSocketId) {
+                    io.to(targetSocketId).emit("kicked");
+                    io.sockets.sockets.get(targetSocketId)?.disconnect();
+                }
+            } else if (action === "mute-all") {
+                io.to(roomId).emit("force-mute");
+            }
+        });
+
+        // Social Features (Typing, etc implemented)
         socket.on("typing", ({ roomId, isTyping, username }) => {
             socket.to(roomId).emit("typing", { peerId: socket.peerId, isTyping, username });
         });
@@ -133,10 +180,19 @@ export function socketHandler(io) {
         });
 
         socket.on("disconnect", async () => {
+            // Handle Host leaving
+            if (roomHosts.get(socket.roomId) === socket.peerId) {
+                // Assign new host?
+                // For now, just delete
+                roomHosts.delete(socket.roomId);
+            }
+
             if (socket.roomId && socket.peerId) {
-                await RoomMember.destroy({
-                    where: { room_id: socket.roomId, peer_id: socket.peerId }
-                });
+                try {
+                    await RoomMember.destroy({
+                        where: { room_id: socket.roomId, peer_id: socket.peerId }
+                    });
+                } catch (e) { }
                 io.emit("room-updated");
                 socket.to(socket.roomId).emit("peer-left", { peerId: socket.peerId });
             }
