@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 export default function SideBar({
     toggleMic, toggleCam, micEnabled, camEnabled, roomId,
-    onSelectMedia, isHost, onMuteAll
+    onSelectMedia, isHost
 }) {
     const [copied, setCopied] = useState(false);
 
@@ -109,14 +109,7 @@ export default function SideBar({
                 {/* Host Controls */}
                 {isHost && (
                     <>
-                        <button
-                            className="sidebar-btn"
-                            onClick={onMuteAll}
-                            style={{ ...btnStyle, background: "#d63031" }}
-                            title="Mute Everyone"
-                        >
-                            🔇🛑
-                        </button>
+
                     </>
                 )}
             </div>

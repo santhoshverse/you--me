@@ -26,8 +26,7 @@ export default function RoomPage() {
         camEnabled,
         username,
         isHost,
-        kickPeer,
-        muteAll
+        kickPeer
     } = useWebRTC();
 
     // No local media state needed anymore - everything is driven by the Universal Player via socket
@@ -175,7 +174,6 @@ export default function RoomPage() {
                 roomId={roomId}
                 onSelectMedia={handleSelectMedia}
                 isHost={isHost}
-                onMuteAll={muteAll}
             />
         </div>
     );
