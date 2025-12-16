@@ -24,7 +24,10 @@ export default function RoomPage() {
         toggleCam,
         micEnabled,
         camEnabled,
-        username
+        username,
+        isHost,
+        kickPeer,
+        muteAll
     } = useWebRTC();
 
     // No local media state needed anymore - everything is driven by the Universal Player via socket
@@ -153,7 +156,13 @@ export default function RoomPage() {
 
                 {/* Avatars at Bottom */}
                 <div style={{ height: "180px" }}>
-                    <CouchLayout localStream={localStream} peers={peers} username={username} />
+                    <CouchLayout
+                        localStream={localStream}
+                        peers={peers}
+                        username={username}
+                        isHost={isHost}
+                        onKick={kickPeer}
+                    />
                 </div>
             </div>
 
@@ -165,6 +174,8 @@ export default function RoomPage() {
                 camEnabled={camEnabled}
                 roomId={roomId}
                 onSelectMedia={handleSelectMedia}
+                isHost={isHost}
+                onMuteAll={muteAll}
             />
         </div>
     );
