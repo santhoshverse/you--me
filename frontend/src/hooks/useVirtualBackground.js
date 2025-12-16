@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEffect, useRef, useState } from 'react';
 import * as mpSelfieSegmentation from '@mediapipe/selfie_segmentation';
 
 export default function useVirtualBackground() {
