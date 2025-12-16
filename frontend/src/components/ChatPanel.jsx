@@ -2,12 +2,14 @@ import React from "react";
 import { v4 as uuidv4 } from 'uuid';
 
 export default function ChatPanel({ messages, chatInput, setChatInput, sendMessage, socket, roomId, username }) {
-    const messagesEndRef = React.useRef(null);
+    const messagesContainerRef = React.useRef(null);
     const [typingUsers, setTypingUsers] = React.useState(new Set());
     const typingTimeoutRef = React.useRef(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     };
 
     React.useEffect(() => {
@@ -83,16 +85,18 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                 ))}
             </div>
 
-            <div style={{
-                flex: 1,
-                overflowY: "auto",
-                background: "#111",
-                padding: 10,
-                borderRadius: "5px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px"
-            }}>
+            <div
+                ref={messagesContainerRef}
+                style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    background: "#111",
+                    padding: 10,
+                    borderRadius: "5px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px"
+                }}>
                 {(!messages || messages.length === 0) ? (
                     <p style={{ color: "gray" }}>No messages yet...</p>
                 ) : (
