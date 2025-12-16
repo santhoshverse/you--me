@@ -2,11 +2,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socket } from "../socket";
 import { v4 as uuid } from "uuid";
-import useVirtualBackground from "./useVirtualBackground";
 
 export default function useWebRTC() {
-  const [rawStream, setRawStream] = useState(null); // Camera source
-  const [localStream, setLocalStream] = useState(null); // Exposed stream
+  const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({});
   const [isSharing, setIsSharing] = useState(false);
   const [screenStream, setScreenStream] = useState(null);
@@ -14,12 +12,6 @@ export default function useWebRTC() {
   const [camEnabled, setCamEnabled] = useState(true);
   const [username] = useState(localStorage.getItem("name") || "Guest");
   const [isHost, setIsHost] = useState(false);
-
-  // Virtual Background
-  const [backgroundEffect, setBackgroundEffect] = useState("none");
-  const hiddenVideoRef = useRef(document.createElement("video"));
-  const animationFrameRef = useRef(null);
-  const { processStream, getCanvasStream, isReady: isBgReady } = useVirtualBackground();
 
   const peerConnections = useRef({});
   const peerId = useRef(uuid());
@@ -33,13 +25,6 @@ export default function useWebRTC() {
     }
   ];
 
-  // Initialize hidden video for processing
-  useEffect(() => {
-    hiddenVideoRef.current.muted = true;
-    hiddenVideoRef.current.playsInline = true;
-    hiddenVideoRef.current.autoplay = true;
-  }, []);
-
   useEffect(() => {
     async function startCamera() {
       try {
@@ -47,7 +32,6 @@ export default function useWebRTC() {
           video: true,
           audio: true
         });
-        setRawStream(stream);
         setLocalStream(stream);
       } catch (err) {
         console.warn("⚠️ User denied media permissions or device not found:", err);
@@ -56,72 +40,9 @@ export default function useWebRTC() {
     startCamera();
   }, []);
 
-  // Background Processing Loop
-  const processFrame = useCallback(async () => {
-    if (backgroundEffect !== "none" && rawStream && isBgReady) {
-      await processStream(hiddenVideoRef.current, backgroundEffect);
-      animationFrameRef.current = requestAnimationFrame(processFrame);
-    }
-  }, [backgroundEffect, rawStream, isBgReady, processStream]);
-
-  // Handle Effect Changes
-  useEffect(() => {
-    if (!rawStream) return;
-
-    const handleEffectChange = async () => {
-      if (backgroundEffect === "none") {
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-
-        // Restore raw stream tracks
-        // We need to preserve audio track from rawStream
-        // And use video track from rawStream
-        const audioTrack = rawStream.getAudioTracks()[0];
-        const videoTrack = rawStream.getVideoTracks()[0];
-
-        // If localStream is currently processed, we need to update it
-        if (localStream !== rawStream) {
-          setLocalStream(rawStream);
-
-          // Update Peers
-          Object.values(peerConnections.current).forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track?.kind === "video");
-            if (sender && videoTrack) sender.replaceTrack(videoTrack);
-          });
-        }
-      } else {
-        // Start Processing
-        if (!isBgReady) return;
-
-        hiddenVideoRef.current.srcObject = rawStream;
-        await hiddenVideoRef.current.play().catch(e => console.error("Hidden video play error", e));
-
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        processFrame();
-
-        const canvasStream = getCanvasStream();
-        const processedVideoTrack = canvasStream.getVideoTracks()[0];
-        const audioTrack = rawStream.getAudioTracks()[0];
-
-        const finalStream = new MediaStream([processedVideoTrack, audioTrack].filter(Boolean));
-        setLocalStream(finalStream);
-
-        // Update Peers
-        Object.values(peerConnections.current).forEach(pc => {
-          const sender = pc.getSenders().find(s => s.track?.kind === "video");
-          if (sender && processedVideoTrack) sender.replaceTrack(processedVideoTrack);
-        });
-      }
-    };
-    handleEffectChange();
-
-    return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
-  }, [backgroundEffect, rawStream, isBgReady, processFrame, getCanvasStream]); // Removed localStream to avoid loop
-
   function forceStopMic(roomId) {
-    if (!rawStream) return;
-    const audioTrack = rawStream.getAudioTracks()[0];
+    if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
     if (audioTrack && audioTrack.enabled) {
       audioTrack.stop();
       setMicEnabled(false);
@@ -130,9 +51,9 @@ export default function useWebRTC() {
   }
 
   function toggleMic(roomId) {
-    if (!rawStream) return;
+    if (!localStream) return;
 
-    const audioTrack = rawStream.getAudioTracks()[0];
+    const audioTrack = localStream.getAudioTracks()[0];
 
     if (audioTrack.enabled) {
       audioTrack.stop();
@@ -148,24 +69,16 @@ export default function useWebRTC() {
         .then(newStream => {
           const newAudioTrack = newStream.getAudioTracks()[0];
 
-          // Update raw stream
-          rawStream.removeTrack(audioTrack);
-          rawStream.addTrack(newAudioTrack);
-
-          // Helper to update peer sender
           Object.values(peerConnections.current).forEach(pc => {
             const sender = pc.getSenders().find(s => s.track?.kind === "audio");
             if (sender) sender.replaceTrack(newAudioTrack);
           });
 
-          // Update local stream if separate
-          // Note: if using processed stream, it uses valid audio track? 
-          // We might need to update localStream's audio track too if it's a mix
-          if (localStream && localStream !== rawStream) {
-            const oldAudio = localStream.getAudioTracks()[0];
-            if (oldAudio) localStream.removeTrack(oldAudio);
-            localStream.addTrack(newAudioTrack);
-          }
+          // Replace track in local stream (remove old, add new)
+          // Actually, removal stops it? No, we stopped old one.
+          // Better to construct new stream or modify existing
+          localStream.removeTrack(audioTrack);
+          localStream.addTrack(newAudioTrack);
 
           setMicEnabled(true);
           socket.emit("toggle-mic", {
@@ -178,9 +91,9 @@ export default function useWebRTC() {
   }
 
   function toggleCam(roomId) {
-    if (!rawStream) return;
+    if (!localStream) return;
 
-    const videoTrack = rawStream.getVideoTracks()[0];
+    const videoTrack = localStream.getVideoTracks()[0];
 
     if (videoTrack.enabled) {
       videoTrack.stop();
@@ -195,27 +108,13 @@ export default function useWebRTC() {
         .then(newStream => {
           const newVideoTrack = newStream.getVideoTracks()[0];
 
-          // Update raw
-          if (videoTrack) rawStream.removeTrack(videoTrack);
-          rawStream.addTrack(newVideoTrack);
+          Object.values(peerConnections.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === "video");
+            if (sender) sender.replaceTrack(newVideoTrack);
+          });
 
-          // Trigger effect re-eval naturally via rawStream dependency (though identity constraint)
-          // Ideally invoke setRawStream(newStream) to trigger effects?
-          // Since rawStream state is object, let's update it
-          // But we need to keep Audio track!
-          const newRaw = new MediaStream([newVideoTrack, ...rawStream.getAudioTracks()]);
-          setRawStream(newRaw);
-
-          // If effect is None, manually update peers/local
-          if (backgroundEffect === "none") {
-            setLocalStream(newRaw);
-            Object.values(peerConnections.current).forEach(pc => {
-              const sender = pc.getSenders().find(s => s.track?.kind === "video");
-              if (sender) sender.replaceTrack(newVideoTrack);
-            });
-          }
-          // If effect is active, the useEffect [rawStream] will handle it? 
-          // Yes, setRawStream triggers it.
+          localStream.removeTrack(videoTrack);
+          localStream.addTrack(newVideoTrack);
 
           setCamEnabled(true);
           socket.emit("toggle-cam", {
@@ -270,7 +169,6 @@ export default function useWebRTC() {
 
       Object.values(peerConnections.current).forEach(pc => {
         displayStream.getTracks().forEach(track => {
-          // Note: addTrack returns sender
           pc.addTrack(track, displayStream);
         });
       });
@@ -294,7 +192,6 @@ export default function useWebRTC() {
     socket.emit("screen-stopped", { roomId });
   }
 
-  // Admin Actions
   function kickPeer(targetPeerId) {
     socket.emit("admin-action", {
       roomId: socket.roomId,
@@ -314,7 +211,6 @@ export default function useWebRTC() {
     socket.emit("register", { peerId: peerId.current, username });
     socket.emit("join-room", { roomId, peerId: peerId.current });
 
-    // Host Checks
     socket.on("host-update", ({ hostPeerId }) => {
       setIsHost(hostPeerId === peerId.current);
     });
@@ -337,14 +233,12 @@ export default function useWebRTC() {
 
       const pc = createPeerConnection(remoteId);
 
-      // Add our tracks (localStream is what we send)
       if (localStream) {
         localStream.getTracks().forEach(track =>
           pc.addTrack(track, localStream)
         );
       }
 
-      // Create offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
@@ -432,7 +326,6 @@ export default function useWebRTC() {
     username,
     isHost,
     kickPeer,
-    muteAll,
-    setBackgroundEffect
+    muteAll
   };
 }
