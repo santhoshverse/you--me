@@ -119,11 +119,12 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
             }
 
             setVideoId(null);
-            setWebVideo(null);
+            // setWebVideo(null); // Don't clear immediately; handle in specific types
             setIframeURL(null);
             setRequiredFile(null);
 
             if (type === "youtube") {
+                setWebVideo(null);
                 const id = getYouTubeID(url);
                 if (id) setVideoId(id);
             } else if (type === "video") {
@@ -135,9 +136,11 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
                 if (currentLocal && currentLocal.startsWith("blob:")) {
                     setWebVideo(currentLocal);
                 } else {
+                    setWebVideo(null);
                     setRequiredFile(media.filename);
                 }
             } else if (type === "website") {
+                setWebVideo(null);
                 setIframeURL(url);
             }
         });

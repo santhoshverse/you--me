@@ -55,10 +55,13 @@ export default function RoomPage() {
             setLocalVideoUrl(url);
 
             // Notify room about the filename so they can sync
-            socket.emit("set-media", {
-                roomId,
-                media: { type: "file", filename: payload.name }
-            });
+            // Fix: Delay emit slightly to allow React state/refs to update first
+            setTimeout(() => {
+                socket.emit("set-media", {
+                    roomId,
+                    media: { type: "file", filename: payload.name }
+                });
+            }, 500);
 
         } else if (type === "screen") {
             // Screen share logic
