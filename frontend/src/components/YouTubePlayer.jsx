@@ -122,13 +122,14 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
             } else if (type === "video") {
                 setWebVideo(url);
             } else if (type === "file") {
-                // If we already have the blob url (host or already selected), we don't clear it yet
-                // But wait, setWebVideo(null) above cleared it.
-                // WE MUST CHECK if localVideoUrl is set. 
-                // Actually, localVideoUrl prop update will handle the playing.
-                // Here we just set the "Requirement".
-                setRequiredFile(media.filename);
-                // If we happen to have localVideoUrl, useEffect [localVideoUrl] will override.
+                // Fix: If we already have the localVideoUrl prop set (meaning we selected the file),
+                // do NOT clear webVideo or require file again.
+                // The prop update from parent handles the actual setting of webVideo.
+                if (localVideoUrl && localVideoUrl.startsWith("blob:")) {
+                    setWebVideo(localVideoUrl); // Re-enforce it
+                } else {
+                    setRequiredFile(media.filename);
+                }
             } else if (type === "website") {
                 setIframeURL(url);
             }
