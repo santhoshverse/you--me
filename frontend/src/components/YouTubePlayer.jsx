@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 
-export default function YouTubePlayer({ roomId, localVideoUrl }) {
+export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl }) {
     const playerRef = useRef(null);
     const ytContainerRef = useRef(null);
     const localVideoRef = useRef(null);
@@ -10,6 +10,7 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
     const [videoId, setVideoId] = useState(null);
     const [webVideo, setWebVideo] = useState(null);
     const [iframeURL, setIframeURL] = useState(null);
+    const [requiredFile, setRequiredFile] = useState(null);
 
     // Is current user the host? (Strictly speaking, anyone can control now, but we check if we should emit)
     // For now, allow anyone to control.
@@ -20,6 +21,7 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
         if (localVideoUrl) {
             setVideoId(null);
             setIframeURL(null);
+            setRequiredFile(null); // Clear prompt if we have url
             setWebVideo(localVideoUrl);
         }
     }, [localVideoUrl]);
@@ -112,12 +114,21 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
             setVideoId(null);
             setWebVideo(null);
             setIframeURL(null);
+            setRequiredFile(null);
 
             if (type === "youtube") {
                 const id = getYouTubeID(url);
                 if (id) setVideoId(id);
             } else if (type === "video") {
                 setWebVideo(url);
+            } else if (type === "file") {
+                // If we already have the blob url (host or already selected), we don't clear it yet
+                // But wait, setWebVideo(null) above cleared it.
+                // WE MUST CHECK if localVideoUrl is set. 
+                // Actually, localVideoUrl prop update will handle the playing.
+                // Here we just set the "Requirement".
+                setRequiredFile(media.filename);
+                // If we happen to have localVideoUrl, useEffect [localVideoUrl] will override.
             } else if (type === "website") {
                 setIframeURL(url);
             }
@@ -161,9 +172,35 @@ export default function YouTubePlayer({ roomId, localVideoUrl }) {
 
     return (
         <div style={{ textAlign: "center", width: "100%", height: "100%" }}>
-            {!videoId && !webVideo && !iframeURL && (
+            {!videoId && !webVideo && !iframeURL && !requiredFile && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#666" }}>
                     <h3>Waiting for content...</h3>
+                </div>
+            )}
+
+            {/* Guest File Prompt */}
+            {requiredFile && !webVideo && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "white" }}>
+                    <h3>Host is playing: {requiredFile}</h3>
+                    <p>Please select the same file on your device to sync.</p>
+                    <label style={{
+                        marginTop: "20px",
+                        padding: "10px 20px",
+                        background: "#7a35f0",
+                        borderRadius: "8px",
+                        cursor: "pointer"
+                    }}>
+                        Select File
+                        <input
+                            type="file"
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                                if (e.target.files[0]) {
+                                    setLocalVideoUrl(URL.createObjectURL(e.target.files[0]));
+                                }
+                            }}
+                        />
+                    </label>
                 </div>
             )}
 

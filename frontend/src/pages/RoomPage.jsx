@@ -53,6 +53,13 @@ export default function RoomPage() {
         if (type === "file" && payload) {
             const url = URL.createObjectURL(payload);
             setLocalVideoUrl(url);
+
+            // Notify room about the filename so they can sync
+            socket.emit("set-media", {
+                roomId,
+                media: { type: "file", filename: payload.name }
+            });
+
         } else if (type === "screen") {
             // Screen share logic
             if (isSharing) {
@@ -141,7 +148,11 @@ export default function RoomPage() {
                     <FloatingReactions roomId={roomId} />
 
                     {/* The Universal Player */}
-                    <YouTubePlayer roomId={roomId} localVideoUrl={localVideoUrl} />
+                    <YouTubePlayer
+                        roomId={roomId}
+                        localVideoUrl={localVideoUrl}
+                        setLocalVideoUrl={setLocalVideoUrl}
+                    />
 
                     {/* Screen Share Overlay (Preserving functionality if active) */}
                     {screenStream && (
