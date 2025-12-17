@@ -7,6 +7,12 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
     const localVideoRef = useRef(null);
     const isRemoteUpdate = useRef(false);
 
+    // Fix: Use ref to track localVideoUrl in the socket closure
+    const localVideoUrlRef = useRef(localVideoUrl);
+    useEffect(() => {
+        localVideoUrlRef.current = localVideoUrl;
+    }, [localVideoUrl]);
+
     const [videoId, setVideoId] = useState(null);
     const [webVideo, setWebVideo] = useState(null);
     const [iframeURL, setIframeURL] = useState(null);
@@ -122,11 +128,11 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
             } else if (type === "video") {
                 setWebVideo(url);
             } else if (type === "file") {
-                // Fix: If we already have the localVideoUrl prop set (meaning we selected the file),
-                // do NOT clear webVideo or require file again.
-                // The prop update from parent handles the actual setting of webVideo.
-                if (localVideoUrl && localVideoUrl.startsWith("blob:")) {
-                    setWebVideo(localVideoUrl); // Re-enforce it
+                // Fix: Check ref current value to avoid stale closure
+                const currentLocal = localVideoUrlRef.current;
+
+                if (currentLocal && currentLocal.startsWith("blob:")) {
+                    setWebVideo(currentLocal);
                 } else {
                     setRequiredFile(media.filename);
                 }
