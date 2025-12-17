@@ -25,6 +25,10 @@ export default function useWebRTC() {
     }
   ];
 
+  // State to track if we are ready to join
+  const [readyToJoin, setReadyToJoin] = useState(false);
+  const roomIdRef = useRef(null);
+
   useEffect(() => {
     async function startCamera() {
       try {
@@ -33,8 +37,11 @@ export default function useWebRTC() {
           audio: true
         });
         setLocalStream(stream);
+        setReadyToJoin(true); // Stream ready
       } catch (err) {
         console.warn("⚠️ User denied media permissions or device not found:", err);
+        // Still allow joining without media if explicit failure, but warn user
+        setReadyToJoin(true);
       }
     }
     startCamera();
@@ -43,8 +50,8 @@ export default function useWebRTC() {
   function forceStopMic(roomId) {
     if (!localStream) return;
     const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack && audioTrack.enabled) {
-      audioTrack.stop();
+    if (audioTrack) {
+      audioTrack.enabled = false; // Disable instead of stop
       setMicEnabled(false);
       socket.emit("toggle-mic", { roomId, peerId: peerId.current, micEnabled: false });
     }
@@ -52,80 +59,34 @@ export default function useWebRTC() {
 
   function toggleMic(roomId) {
     if (!localStream) return;
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
 
-    if (micEnabled) {
-      // Turn OFF
-      localStream.getAudioTracks().forEach(track => track.stop());
-      setMicEnabled(false);
-      socket.emit("toggle-mic", {
-        roomId,
-        peerId: peerId.current,
-        micEnabled: false
-      });
-    } else {
-      // Turn ON
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(newStream => {
-          const newAudioTrack = newStream.getAudioTracks()[0];
+    const newEnabled = !micEnabled;
+    audioTrack.enabled = newEnabled; // Toggle enabled state
+    setMicEnabled(newEnabled);
 
-          Object.values(peerConnections.current).forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track?.kind === "audio");
-            if (sender) sender.replaceTrack(newAudioTrack);
-          });
-
-          // Recreate stream to force UI update
-          const videoTracks = localStream.getVideoTracks();
-          const newLocalStream = new MediaStream([newAudioTrack, ...videoTracks]);
-          setLocalStream(newLocalStream);
-
-          setMicEnabled(true);
-          socket.emit("toggle-mic", {
-            roomId,
-            peerId: peerId.current,
-            micEnabled: true
-          });
-        })
-        .catch(err => console.error("Error accessing mic:", err));
-    }
+    socket.emit("toggle-mic", {
+      roomId,
+      peerId: peerId.current,
+      micEnabled: newEnabled
+    });
   }
 
   function toggleCam(roomId) {
     if (!localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
 
-    if (camEnabled) {
-      // Turn OFF
-      localStream.getVideoTracks().forEach(track => track.stop());
-      setCamEnabled(false);
-      socket.emit("toggle-cam", {
-        roomId,
-        peerId: peerId.current,
-        camEnabled: false
-      });
-    } else {
-      // Turn ON
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(newStream => {
-          const newVideoTrack = newStream.getVideoTracks()[0];
+    const newEnabled = !camEnabled;
+    videoTrack.enabled = newEnabled; // Toggle enabled state
+    setCamEnabled(newEnabled);
 
-          Object.values(peerConnections.current).forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track?.kind === "video");
-            if (sender) sender.replaceTrack(newVideoTrack);
-          });
-
-          // Recreate stream to force UI update
-          const audioTracks = localStream.getAudioTracks();
-          const newLocalStream = new MediaStream([newVideoTrack, ...audioTracks]);
-          setLocalStream(newLocalStream);
-
-          setCamEnabled(true);
-          socket.emit("toggle-cam", {
-            roomId,
-            peerId: peerId.current,
-            camEnabled: true
-          });
-        })
-        .catch(err => console.error("Error accessing cam:", err));
-    }
+    socket.emit("toggle-cam", {
+      roomId,
+      peerId: peerId.current,
+      camEnabled: newEnabled
+    });
   }
 
   function createPeerConnection(remoteId) {
@@ -209,7 +170,23 @@ export default function useWebRTC() {
     });
   }
 
-  async function joinRoom(roomId) {
+  // Renamed tryingToJoin -> joinRoom
+  // This just sets the INTENT to join. The effect below handles the actual join when ready.
+  function joinRoom(roomId) {
+    roomIdRef.current = roomId;
+  }
+
+  // Actual join logic
+  useEffect(() => {
+    if (readyToJoin && roomIdRef.current) {
+      initSocketJoin(roomIdRef.current);
+      roomIdRef.current = null; // Prevent re-joining
+    }
+  }, [readyToJoin]);
+
+  async function initSocketJoin(roomId) {
+    console.log("🚀 JOINING ROOM:", roomId, "Stream Ready:", !!localStream);
+
     socket.emit("register", { peerId: peerId.current, username });
     socket.emit("join-room", { roomId, peerId: peerId.current });
 
