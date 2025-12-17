@@ -108,7 +108,9 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
 
     // Socket Listeners
     useEffect(() => {
-        socket.on("media-updated", ({ media }) => {
+        // Shared logic for handling media updates
+        const handleMediaUpdate = (media) => {
+            if (!media) return;
             const url = media.url;
             // Fix: Use the type provided by the server if available, otherwise guess from URL
             const type = media.type || getMediaType(url);
@@ -143,18 +145,16 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
                 setWebVideo(null);
                 setIframeURL(url);
             }
-        });
+        };
 
-        socket.on("player-action", (action) => {
+        // Shared logic for handling player actions
+        const handlePlayerAction = (action) => {
+            if (!action) return;
             const { time, isPlaying } = action;
             isRemoteUpdate.current = true; // Lock
 
             // YouTube Sync
             if (playerRef.current && typeof playerRef.current.seekTo === "function") {
-                const now = Date.now();
-                // Simple prediction to reduce lag perception
-                // const travel = (now - action.updatedAt) / 1000; 
-                // const syncedTime = time + travel;
                 if (Math.abs(playerRef.current.getCurrentTime() - time) > 1.0) {
                     playerRef.current.seekTo(time, true);
                 }
@@ -173,11 +173,29 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
             }
 
             setTimeout(() => { isRemoteUpdate.current = false; }, 800);
+        };
+
+        // Event Listeners
+        socket.on("media-updated", ({ media }) => handleMediaUpdate(media));
+        socket.on("player-action", (action) => handlePlayerAction(action));
+
+        // Fix: Listen for initial room state when joining
+        socket.on("room-state", ({ state }) => {
+            if (state?.media) {
+                handleMediaUpdate(state.media);
+            }
+            if (state?.playback) {
+                // Small delay to let media load before applying playback state
+                setTimeout(() => {
+                    handlePlayerAction(state.playback);
+                }, 1000);
+            }
         });
 
         return () => {
             socket.off("media-updated");
             socket.off("player-action");
+            socket.off("room-state");
         };
     }, []);
 
