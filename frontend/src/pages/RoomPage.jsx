@@ -55,6 +55,11 @@ export default function RoomPage() {
             setLocalVideoUrl(url);
         } else if (type === "screen") {
             // Screen share logic
+            if (isSharing) {
+                stopScreenShare();
+            } else {
+                startScreenShare();
+            }
         } else {
             // For buttons that might still be clicked
             const url = prompt("Enter URL:");
@@ -174,6 +179,7 @@ export default function RoomPage() {
                 roomId={roomId}
                 onSelectMedia={handleSelectMedia}
                 isHost={isHost}
+                isSharing={isSharing}
             />
         </div>
     );

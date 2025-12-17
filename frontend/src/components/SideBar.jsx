@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 export default function SideBar({
     toggleMic, toggleCam, micEnabled, camEnabled, roomId,
-    onSelectMedia, isHost
+    onSelectMedia, isHost, isSharing
 }) {
     const [copied, setCopied] = useState(false);
 
@@ -33,6 +33,7 @@ export default function SideBar({
 
     const activeStyle = { ...btnStyle, background: "#7a35f0", boxShadow: "0 0 10px #7a35f0" };
     const inactiveStyle = { ...btnStyle, background: "#ff4444" };
+    const shareActiveStyle = { ...btnStyle, background: "#ff4d4d", animation: "pulse 2s infinite" };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(window.location.href);
@@ -56,6 +57,11 @@ export default function SideBar({
                 {`
                     .sidebar-btn:active { transform: scale(0.9) !important; }
                     .sidebar-btn:hover { transform: scale(1.1); }
+                    @keyframes pulse {
+                        0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+                        70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+                    }
                 `}
             </style>
 
@@ -103,6 +109,16 @@ export default function SideBar({
                         onChange={(e) => onSelectMedia("file", e.target.files[0])}
                     />
                 </label>
+
+                {/* Screen Share */}
+                <button
+                    className="sidebar-btn"
+                    onClick={() => onSelectMedia("screen")}
+                    style={isSharing ? shareActiveStyle : btnStyle}
+                    title={isSharing ? "Stop Sharing" : "Share Screen"}
+                >
+                    🖥️
+                </button>
 
                 <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
 
