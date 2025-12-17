@@ -110,7 +110,8 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
     useEffect(() => {
         socket.on("media-updated", ({ media }) => {
             const url = media.url;
-            const type = getMediaType(url);
+            // Fix: Use the type provided by the server if available, otherwise guess from URL
+            const type = media.type || getMediaType(url);
 
             if (playerRef.current && type !== "youtube") {
                 try { playerRef.current.destroy(); } catch (e) { }
