@@ -228,6 +228,8 @@ export default function useWebRTC() {
     });
 
     socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
+      console.log("🔔 NEW PEER CONNECTED:", remoteId, "(", remoteName, ")");
+
       setPeers(prev => ({
         ...prev,
         [remoteId]: { ...prev[remoteId], username: remoteName }
@@ -244,6 +246,7 @@ export default function useWebRTC() {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
+      console.log("📤 SENDING OFFER TO:", remoteId);
       socket.emit("offer", {
         toPeerId: remoteId,
         fromPeerId: peerId.current,
@@ -252,6 +255,7 @@ export default function useWebRTC() {
     });
 
     socket.on("offer", async ({ fromPeerId: remoteId, sdp }) => {
+      console.log("📩 OFFER RECEIVED FROM:", remoteId);
       const pc = createPeerConnection(remoteId);
 
       if (localStream) {
@@ -265,6 +269,7 @@ export default function useWebRTC() {
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
+      console.log("📤 SENDING ANSWER TO:", remoteId);
       socket.emit("answer", {
         toPeerId: remoteId,
         fromPeerId: peerId.current,
@@ -273,6 +278,7 @@ export default function useWebRTC() {
     });
 
     socket.on("answer", async ({ fromPeerId: remoteId, sdp }) => {
+      console.log("📩 ANSWER RECEIVED FROM:", remoteId);
       const pc = peerConnections.current[remoteId];
       if (!pc) return;
       await pc.setRemoteDescription(sdp);

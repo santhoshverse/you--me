@@ -20,6 +20,7 @@ export function socketHandler(io) {
 
         // Join room
         socket.on("join-room", async ({ roomId, peerId }) => {
+            console.log(`📥 JOIN REQUEST: Room=${roomId}, Peer=${peerId}, Socket=${socket.id}`);
             socket.join(roomId);
             socket.roomId = roomId;
 
@@ -48,6 +49,7 @@ export function socketHandler(io) {
                 socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } } });
             }
 
+            console.log(`📢 Emitting new-peer to room ${roomId} for peer ${peerId}`);
             socket.to(roomId).emit("new-peer", { peerId, username: socket.username });
 
             // Notify who is host
@@ -69,7 +71,10 @@ export function socketHandler(io) {
         socket.on("offer", ({ toPeerId, sdp, fromPeerId }) => {
             const toSocket = peerToSocket.get(toPeerId);
             if (toSocket) {
+                console.log(`➡️ OFFER: ${fromPeerId} -> ${toPeerId}`);
                 io.to(toSocket).emit("offer", { fromPeerId, sdp });
+            } else {
+                console.warn(`⚠️ OFFER FAILED: Target ${toPeerId} not found`);
             }
         });
 
@@ -77,7 +82,10 @@ export function socketHandler(io) {
         socket.on("answer", ({ toPeerId, sdp, fromPeerId }) => {
             const toSocket = peerToSocket.get(toPeerId);
             if (toSocket) {
+                console.log(`⬅️ ANSWER: ${fromPeerId} -> ${toPeerId}`);
                 io.to(toSocket).emit("answer", { fromPeerId, sdp });
+            } else {
+                console.warn(`⚠️ ANSWER FAILED: Target ${toPeerId} not found`);
             }
         });
 
