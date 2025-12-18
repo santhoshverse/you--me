@@ -58,6 +58,12 @@ export function socketHandler(io) {
 
             // Notify who is host
             socket.emit("host-update", { hostPeerId: roomHosts.get(roomId) });
+
+            // Broadcast current member list to everyone in the room
+            try {
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                io.to(roomId).emit("room-state", { members });
+            } catch (e) { }
         });
 
         // ... [Chat Message, Offer, Answer, ICE handlers same as before] ...
@@ -220,6 +226,12 @@ export function socketHandler(io) {
                 } catch (e) { }
                 io.emit("room-updated");
                 socket.to(socket.roomId).emit("peer-left", { peerId: socket.peerId });
+
+                // Broadcast updated member list to everyone remaining in the room
+                try {
+                    const members = await RoomMember.findAll({ where: { room_id: socket.roomId } });
+                    io.to(socket.roomId).emit("room-state", { members });
+                } catch (e) { }
             }
         });
     });

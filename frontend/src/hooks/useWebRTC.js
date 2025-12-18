@@ -232,19 +232,32 @@ export default function useWebRTC() {
 
     socket.on("room-state", ({ members }) => {
       if (members) {
-        const newPeers = {};
-        members.forEach(m => {
-          if (m.peer_id !== peerId.current) {
-            newPeers[m.peer_id] = {
-              peerId: m.peer_id,
-              micEnabled: m.mic_enabled,
-              camEnabled: m.cam_enabled,
-              isSharing: m.is_sharing,
-              username: m.username || "Guest"
-            };
-          }
+        setPeers(prev => {
+          const next = { ...prev };
+          const memberIds = new Set(members.map(m => m.peer_id));
+
+          // Removed members
+          Object.keys(next).forEach(pid => {
+            if (!memberIds.has(pid)) {
+              delete next[pid];
+            }
+          });
+
+          // Added or Updated members
+          members.forEach(m => {
+            if (m.peer_id !== peerId.current) {
+              next[m.peer_id] = {
+                ...next[m.peer_id], // Preserve stream if it exists
+                peerId: m.peer_id,
+                micEnabled: m.mic_enabled,
+                camEnabled: m.cam_enabled,
+                isSharing: m.is_sharing,
+                username: m.username || "Guest"
+              };
+            }
+          });
+          return next;
         });
-        setPeers(prev => ({ ...prev, ...newPeers }));
       }
     });
 

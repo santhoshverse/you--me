@@ -131,6 +131,7 @@ export default function RoomPage() {
                 socket={socket}
                 roomId={roomId}
                 username={username}
+                peers={peers}
             />
 
             {/* Center: Main Content Area */}

@@ -1,7 +1,7 @@
 import React from "react";
-import { v4 as uuidv4 } from 'uuid';
+import UserList from "./UserList";
 
-export default function ChatPanel({ messages, chatInput, setChatInput, sendMessage, socket, roomId, username }) {
+export default function ChatPanel({ messages, chatInput, setChatInput, sendMessage, socket, roomId, username, peers }) {
     const messagesContainerRef = React.useRef(null);
     const [typingUsers, setTypingUsers] = React.useState(new Set());
     const typingTimeoutRef = React.useRef(null);
@@ -62,6 +62,9 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
     return (
         <div style={{ padding: 20, height: "100%", background: "#1a1a1a", boxSizing: "border-box", width: "300px", borderRight: "1px solid #333", display: "flex", flexDirection: "column" }}>
             <h3 style={{ margin: "0 0 10px 0" }}>Chat</h3>
+
+            {/* Member List */}
+            <UserList peers={peers} localUsername={username} />
 
             {/* Floating Emoji Bar */}
             <div style={{ display: "flex", gap: "5px", marginBottom: "10px", justifyContent: "center" }}>
