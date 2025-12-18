@@ -10,12 +10,12 @@ export const sequelize = new Sequelize(
         port: DB_CONFIG.PORT,
         dialect: "mysql",
         logging: false,
-        dialectOptions: {
+        dialectOptions: process.env.NODE_ENV === "production" ? {
             ssl: {
                 require: true,
                 rejectUnauthorized: false
             }
-        }
+        } : {}
     }
 );
 
