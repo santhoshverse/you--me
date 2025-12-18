@@ -2,7 +2,7 @@ import express from "express";
 import http from "http";
 import cors from "cors";
 import { Server } from "socket.io";
-import { PORT } from "./config.js";
+import { PORT, DB_CONFIG } from "./config.js";
 import { connectDB, sequelize } from "./db.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import { socketHandler } from "./socket.js";
