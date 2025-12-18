@@ -6,6 +6,6 @@ const RoomMember = sequelize.define("RoomMember", {
     room_id: DataTypes.STRING,
     user_id: DataTypes.BIGINT,
     peer_id: DataTypes.STRING
-}, { tableName: "room_members", timestamps: false });
+}, { tableName: "room_members", timestamps: false, underscored: true });
 
 export default RoomMember;

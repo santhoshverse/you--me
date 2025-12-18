@@ -8,6 +8,6 @@ const Room = sequelize.define("Room", {
     host_user_id: DataTypes.BIGINT,
     is_private: { type: DataTypes.BOOLEAN, defaultValue: false },
     settings: DataTypes.JSON
-}, { tableName: "rooms", timestamps: false });
+}, { tableName: "rooms", timestamps: true, underscored: true });
 
 export default Room;

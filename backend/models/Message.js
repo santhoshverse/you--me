@@ -6,6 +6,6 @@ const Message = sequelize.define("Message", {
     room_id: DataTypes.STRING,
     user_id: DataTypes.BIGINT,
     text: DataTypes.TEXT
-}, { tableName: "messages", timestamps: false });
+}, { tableName: "messages", timestamps: true, underscored: true });
 
 export default Message;

@@ -14,6 +14,6 @@ const RoomState = sequelize.define("RoomState", {
         type: DataTypes.JSON,
         defaultValue: { time: 0, isPlaying: false, updatedAt: Date.now() }
     }
-}, { tableName: "room_state", timestamps: false });
+}, { tableName: "room_state", timestamps: true, underscored: true });
 
 export default RoomState;

@@ -8,6 +8,6 @@ const User = sequelize.define("User", {
         allowNull: false
     },
     avatar_url: DataTypes.STRING
-}, { tableName: "users", timestamps: false });
+}, { tableName: "users", timestamps: true, underscored: true });
 
 export default User;
