@@ -47,25 +47,38 @@ export default function useWebRTC() {
     startCamera();
   }, []);
 
-  function forceStopMic(roomId) {
-    if (!localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = false; // Disable instead of stop
-      setMicEnabled(false);
-      socket.emit("toggle-mic", { roomId, peerId: peerId.current, micEnabled: false });
-    }
+  async function replaceTrackInPeers(newTrack) {
+    if (!newTrack) return;
+    Object.values(peerConnections.current).forEach(pc => {
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === newTrack.kind);
+      if (sender) {
+        sender.replaceTrack(newTrack);
+      }
+    });
   }
 
-  function toggleMic(roomId) {
+  async function toggleMic(roomId) {
     if (!localStream) return;
     const audioTrack = localStream.getAudioTracks()[0];
-    if (!audioTrack) return;
-
     const newEnabled = !micEnabled;
-    audioTrack.enabled = newEnabled; // Toggle enabled state
-    setMicEnabled(newEnabled);
 
+    if (!newEnabled) {
+      if (audioTrack) {
+        audioTrack.stop();
+        localStream.removeTrack(audioTrack);
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const newTrack = stream.getAudioTracks()[0];
+        localStream.addTrack(newTrack);
+        await replaceTrackInPeers(newTrack);
+      } catch (e) {
+        console.warn("Failed to re-enable mic:", e);
+      }
+    }
+
+    setMicEnabled(newEnabled);
     socket.emit("toggle-mic", {
       roomId,
       peerId: peerId.current,
@@ -73,15 +86,28 @@ export default function useWebRTC() {
     });
   }
 
-  function toggleCam(roomId) {
+  async function toggleCam(roomId) {
     if (!localStream) return;
     const videoTrack = localStream.getVideoTracks()[0];
-    if (!videoTrack) return;
-
     const newEnabled = !camEnabled;
-    videoTrack.enabled = newEnabled; // Toggle enabled state
-    setCamEnabled(newEnabled);
 
+    if (!newEnabled) {
+      if (videoTrack) {
+        videoTrack.stop();
+        localStream.removeTrack(videoTrack);
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newTrack = stream.getVideoTracks()[0];
+        localStream.addTrack(newTrack);
+        await replaceTrackInPeers(newTrack);
+      } catch (e) {
+        console.warn("Failed to re-enable cam:", e);
+      }
+    }
+
+    setCamEnabled(newEnabled);
     socket.emit("toggle-cam", {
       roomId,
       peerId: peerId.current,
@@ -152,7 +178,7 @@ export default function useWebRTC() {
     setScreenStream(null);
     setIsSharing(false);
 
-    socket.emit("screen-stopped", { roomId });
+    socket.emit("screen-stopped", { roomId, peerId: peerId.current });
   }
 
   function kickPeer(targetPeerId) {
@@ -200,8 +226,26 @@ export default function useWebRTC() {
     });
 
     socket.on("force-mute", () => {
-      forceStopMic(roomId);
+      if (micEnabled) toggleMic(roomId);
       alert("The host muted everyone.");
+    });
+
+    socket.on("room-state", ({ members }) => {
+      if (members) {
+        const newPeers = {};
+        members.forEach(m => {
+          if (m.peer_id !== peerId.current) {
+            newPeers[m.peer_id] = {
+              peerId: m.peer_id,
+              micEnabled: m.mic_enabled,
+              camEnabled: m.cam_enabled,
+              isSharing: m.is_sharing,
+              username: m.username || "Guest"
+            };
+          }
+        });
+        setPeers(prev => ({ ...prev, ...newPeers }));
+      }
     });
 
     socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {

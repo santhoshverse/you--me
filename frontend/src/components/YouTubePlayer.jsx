@@ -110,39 +110,33 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
     useEffect(() => {
         // Shared logic for handling media updates
         const handleMediaUpdate = (media) => {
-            if (!media) return;
-            const url = media.url;
-            // Fix: Use the type provided by the server if available, otherwise guess from URL
-            const type = media.type || getMediaType(url);
-
-            if (playerRef.current && type !== "youtube") {
+            // ALWAYS reset everything first to ensure a clean slate
+            if (playerRef.current) {
                 try { playerRef.current.destroy(); } catch (e) { }
                 playerRef.current = null;
             }
-
             setVideoId(null);
-            // setWebVideo(null); // Don't clear immediately; handle in specific types
+            setWebVideo(null);
             setIframeURL(null);
             setRequiredFile(null);
 
+            if (!media) return;
+            const url = media.url;
+            const type = media.type || getMediaType(url);
+
             if (type === "youtube") {
-                setWebVideo(null);
                 const id = getYouTubeID(url);
                 if (id) setVideoId(id);
             } else if (type === "video") {
                 setWebVideo(url);
             } else if (type === "file") {
-                // Fix: Check ref current value to avoid stale closure
                 const currentLocal = localVideoUrlRef.current;
-
                 if (currentLocal && currentLocal.startsWith("blob:")) {
                     setWebVideo(currentLocal);
                 } else {
-                    setWebVideo(null);
                     setRequiredFile(media.filename);
                 }
             } else if (type === "website") {
-                setWebVideo(null);
                 setIframeURL(url);
             }
         };

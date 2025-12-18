@@ -31,10 +31,13 @@ export function socketHandler(io) {
 
             // Try DB, ignore if fails
             try {
-                await RoomMember.create({
+                await RoomMember.upsert({
                     room_id: roomId,
-                    user_id: null,
-                    peer_id: peerId
+                    peer_id: peerId,
+                    username: socket.username,
+                    mic_enabled: true,
+                    cam_enabled: true,
+                    is_sharing: false
                 });
             } catch (e) { console.warn("DB Error (RoomMember):", e.message); }
 
@@ -43,10 +46,11 @@ export function socketHandler(io) {
 
             try {
                 const state = await RoomState.findOne({ where: { room_id: roomId } });
-                socket.emit("room-state", { state });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                socket.emit("room-state", { state, members });
             } catch (e) {
                 // Return default state if DB fails
-                socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } } });
+                socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } }, members: [] });
             }
 
             console.log(`📢 Emitting new-peer to room ${roomId} for peer ${peerId}`);
@@ -103,6 +107,7 @@ export function socketHandler(io) {
             // For now allow all, or check roomHosts.get(roomId) === socket.peerId
 
             try {
+                // Reset playback state when media changes
                 await RoomState.update(
                     { media, playback: { time: 0, isPlaying: false, updatedAt: Date.now() } },
                     { where: { room_id: roomId } }
@@ -126,11 +131,17 @@ export function socketHandler(io) {
             socket.to(roomId).emit("player-action", action);
         });
 
-        socket.on("toggle-mic", ({ roomId, peerId, micEnabled }) => {
+        socket.on("toggle-mic", async ({ roomId, peerId, micEnabled }) => {
+            try {
+                await RoomMember.update({ mic_enabled: micEnabled }, { where: { room_id: roomId, peer_id: peerId } });
+            } catch (e) { }
             socket.to(roomId).emit("mic-toggled", { peerId, micEnabled });
         });
 
-        socket.on("toggle-cam", ({ roomId, peerId, camEnabled }) => {
+        socket.on("toggle-cam", async ({ roomId, peerId, camEnabled }) => {
+            try {
+                await RoomMember.update({ cam_enabled: camEnabled }, { where: { room_id: roomId, peer_id: peerId } });
+            } catch (e) { }
             socket.to(roomId).emit("cam-toggled", { peerId, camEnabled });
         });
 
@@ -141,18 +152,20 @@ export function socketHandler(io) {
                     { is_screen_sharing: true, screen_sharer_peer_id: peerId },
                     { where: { room_id: roomId } }
                 );
+                await RoomMember.update({ is_sharing: true }, { where: { room_id: roomId, peer_id: peerId } });
             } catch (e) { }
 
             socket.to(roomId).emit("screen-started", { peerId });
         });
 
         // Screen Sharing Stopped
-        socket.on("screen-stopped", async ({ roomId }) => {
+        socket.on("screen-stopped", async ({ roomId, peerId }) => {
             try {
                 await RoomState.update(
                     { is_screen_sharing: false, screen_sharer_peer_id: null },
                     { where: { room_id: roomId } }
                 );
+                await RoomMember.update({ is_sharing: false }, { where: { room_id: roomId, peer_id: peerId } });
             } catch (e) { }
 
             socket.to(roomId).emit("screen-stopped");

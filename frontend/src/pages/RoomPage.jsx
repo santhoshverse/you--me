@@ -42,6 +42,9 @@ export default function RoomPage() {
     function handleURL(url) {
         if (!url) return;
 
+        // Reset local media first
+        setLocalVideoUrl(null);
+
         socket.emit("set-media", {
             roomId,
             media: { type: "url", url }
