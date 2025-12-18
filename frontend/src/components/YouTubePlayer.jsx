@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 
-export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl }) {
+export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl, isHost }) {
     const playerRef = useRef(null);
     const ytContainerRef = useRef(null);
     const localVideoRef = useRef(null);
@@ -18,9 +18,6 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
     const [iframeURL, setIframeURL] = useState(null);
     const [requiredFile, setRequiredFile] = useState(null);
 
-    // Is current user the host? (Strictly speaking, anyone can control now, but we check if we should emit)
-    // For now, allow anyone to control.
-    const isHost = true;
 
     // Handle Local Video Prop (from sidebar or file picker)
     useEffect(() => {
@@ -29,6 +26,11 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
             setIframeURL(null);
             setRequiredFile(null); // Clear prompt if we have url
             setWebVideo(localVideoUrl);
+        } else {
+            // If localVideoUrl is cleared from parent, clear webVideo if it was a local video
+            if (webVideo && webVideo.startsWith("blob:")) {
+                setWebVideo(null);
+            }
         }
     }, [localVideoUrl]);
 
@@ -122,7 +124,8 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl 
 
             if (!media) return;
             const url = media.url;
-            const type = media.type || getMediaType(url);
+            let type = media.type || getMediaType(url);
+            if (type === "url") type = getMediaType(url);
 
             if (type === "youtube") {
                 const id = getYouTubeID(url);

@@ -171,6 +171,7 @@ export default function RoomPage() {
                         roomId={roomId}
                         localVideoUrl={localVideoUrl}
                         setLocalVideoUrl={setLocalVideoUrl}
+                        isHost={isHost}
                     />
 
                     {/* Screen Share Overlay (Preserving functionality if active) */}
