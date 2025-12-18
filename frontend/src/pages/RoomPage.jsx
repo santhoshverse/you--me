@@ -42,8 +42,9 @@ export default function RoomPage() {
     function handleURL(url) {
         if (!url) return;
 
-        // Reset local media first
+        // Reset local states completely
         setLocalVideoUrl(null);
+        if (isSharing) stopScreenShare(roomId);
 
         socket.emit("set-media", {
             roomId,
@@ -56,6 +57,7 @@ export default function RoomPage() {
         if (type === "file" && payload) {
             const url = URL.createObjectURL(payload);
             setLocalVideoUrl(url);
+            if (isSharing) stopScreenShare(roomId);
 
             // Notify room about the filename so they can sync
             // Fix: Delay emit slightly to allow React state/refs to update first
@@ -69,9 +71,12 @@ export default function RoomPage() {
         } else if (type === "screen") {
             // Screen share logic
             if (isSharing) {
-                stopScreenShare();
+                stopScreenShare(roomId);
             } else {
-                startScreenShare();
+                // If starting screen share, maybe clear other media? 
+                // The user said three modes. Let's clear media if starting screen.
+                socket.emit("set-media", { roomId, media: null });
+                startScreenShare(roomId);
             }
         } else {
             // For buttons that might still be clicked
@@ -89,10 +94,18 @@ export default function RoomPage() {
             setMessages(prev => [...prev, msg]);
         });
 
+        // Listen for remote media changes to clear local file state
+        socket.on("room-state", ({ state }) => {
+            if (state?.media?.type && state.media.type !== "file") {
+                setLocalVideoUrl(null);
+            }
+        });
+
         return () => {
             socket.off("chat-message");
+            socket.off("room-state");
         }
-    }, []);
+    }, [socket]);
 
     function sendMessage() {
         if (!chatInput.trim()) return;

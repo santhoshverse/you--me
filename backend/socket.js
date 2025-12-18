@@ -103,18 +103,18 @@ export function socketHandler(io) {
 
         // When host sets video
         socket.on("set-media", async ({ roomId, media }) => {
-            // Check if host? (Optional strictness)
-            // For now allow all, or check roomHosts.get(roomId) === socket.peerId
-
             try {
                 // Reset playback state when media changes
                 await RoomState.update(
                     { media, playback: { time: 0, isPlaying: false, updatedAt: Date.now() } },
                     { where: { room_id: roomId } }
                 );
-            } catch (e) { console.warn("DB update failed"); }
 
-            io.to(roomId).emit("media-updated", { media });
+                // Fetch full state for broadcast
+                const state = await RoomState.findOne({ where: { room_id: roomId } });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                io.to(roomId).emit("room-state", { state, members });
+            } catch (e) { console.warn("Media update failed:", e); }
         });
 
         // Host plays/pauses/seek
@@ -134,6 +134,8 @@ export function socketHandler(io) {
         socket.on("toggle-mic", async ({ roomId, peerId, micEnabled }) => {
             try {
                 await RoomMember.update({ mic_enabled: micEnabled }, { where: { room_id: roomId, peer_id: peerId } });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                io.to(roomId).emit("room-state", { members });
             } catch (e) { }
             socket.to(roomId).emit("mic-toggled", { peerId, micEnabled });
         });
@@ -141,6 +143,8 @@ export function socketHandler(io) {
         socket.on("toggle-cam", async ({ roomId, peerId, camEnabled }) => {
             try {
                 await RoomMember.update({ cam_enabled: camEnabled }, { where: { room_id: roomId, peer_id: peerId } });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                io.to(roomId).emit("room-state", { members });
             } catch (e) { }
             socket.to(roomId).emit("cam-toggled", { peerId, camEnabled });
         });
