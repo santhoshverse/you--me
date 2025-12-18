@@ -43,7 +43,10 @@ connectDB()
     .catch((err) => {
         console.error("❌ Database connection failed!");
         console.error("Error Message:", err.message);
-        console.error("Error Code:", err.original?.code || err.code);
-        console.error("Full Error Object:", JSON.stringify(err, null, 2));
+        if (err.original) {
+            console.error("Original Error Code:", err.original.code);
+            console.error("Original Error Msg:", err.original.sqlMessage);
+        }
+        console.error("Stack Trace:", err.stack);
         process.exit(1);
     });

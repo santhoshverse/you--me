@@ -8,5 +8,5 @@ export const DB_CONFIG = {
     USER: process.env.MYSQL_USER,
     PASSWORD: process.env.MYSQL_PASSWORD,
     DATABASE: process.env.MYSQL_DATABASE,
-    PORT: process.env.MYSQL_PORT || 3306
+    PORT: Number(process.env.MYSQL_PORT) || 3306
 };
