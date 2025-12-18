@@ -11,7 +11,9 @@ const User = sequelize.define("User", {
         type: DataTypes.STRING,
         allowNull: false
     },
-    avatar_url: DataTypes.STRING
+    avatar_url: DataTypes.STRING,
+    createdAt: { type: DataTypes.DATE, allowNull: true, field: 'created_at' },
+    updatedAt: { type: DataTypes.DATE, allowNull: true, field: 'updated_at' }
 }, { tableName: "users", timestamps: true, underscored: true });
 
 export default User;
