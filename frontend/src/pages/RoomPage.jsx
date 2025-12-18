@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../socket";
 import CouchLayout from "../components/CouchLayout";
 import ChatPanel from "../components/ChatPanel";
@@ -11,6 +11,15 @@ import FloatingReactions from "../components/FloatingReactions";
 
 export default function RoomPage() {
     const { roomId } = useParams();
+    const navigate = useNavigate();
+
+    // 1. Force name entry if missing
+    React.useEffect(() => {
+        const storedName = localStorage.getItem("name");
+        if (!storedName) {
+            navigate(`/enter?redirect=/room/${roomId}`);
+        }
+    }, [roomId, navigate]);
 
     const {
         localStream,
@@ -28,6 +37,8 @@ export default function RoomPage() {
         isHost,
         kickPeer
     } = useWebRTC();
+
+    if (!localStorage.getItem("name")) return null; // Wait for redirect
 
     // No local media state needed anymore - everything is driven by the Universal Player via socket
     // EXCEPT local file playback which is personal

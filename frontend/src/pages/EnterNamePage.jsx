@@ -1,10 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { generateRandomName } from "../utils/randomName";
 
 export default function EnterNamePage() {
-    const [name, setName] = useState(generateRandomName());
+    const [name, setName] = useState(localStorage.getItem("name") || generateRandomName());
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Get redirect path from query param
+    const query = new URLSearchParams(location.search);
+    const redirectTo = query.get("redirect") || "/create";
 
     async function submitName() {
         try {
@@ -28,7 +33,7 @@ export default function EnterNamePage() {
             if (data.success) {
                 localStorage.setItem("userId", data.userId);
                 localStorage.setItem("name", data.name);
-                navigate("/create");
+                navigate(redirectTo);
             } else {
                 alert("Failed to register guest user.");
             }
