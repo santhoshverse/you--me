@@ -27,12 +27,12 @@ const io = new Server(server, {
 });
 socketHandler(io);
 
-// Start server
-// 1. Connect to DB
-// 2. Sync Models
-// 3. Start Server
+const maskedHost = DB_CONFIG.HOST ? (DB_CONFIG.HOST.length > 5 ? DB_CONFIG.HOST.substring(0, 5) + "..." : DB_CONFIG.HOST) : "undefined";
+console.log(`📡 Attempting to connect to DB at host: ${maskedHost}...`);
+
 connectDB()
     .then(async () => {
+        console.log("🛠️ Syncing database models...");
         await sequelize.sync({ alter: true });
         console.log("✅ Database synced and schema updated successfully");
         server.listen(PORT, () => {
@@ -40,6 +40,8 @@ connectDB()
         });
     })
     .catch((err) => {
-        console.error("❌ Database connection failed:", err);
-        process.exit(1); // Exit if DB fails
+        console.error("❌ Database connection failed!");
+        console.error("Error Details:", err.message);
+        console.error("Error Code:", err.original?.code || err.code);
+        process.exit(1);
     });
