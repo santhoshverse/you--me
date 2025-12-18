@@ -7,6 +7,7 @@ import { connectDB, sequelize } from "./db.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import { socketHandler } from "./socket.js";
 
+// Production Server Initialization
 const app = express();
 app.use(cors({
     origin: "*",
