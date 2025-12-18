@@ -36,17 +36,19 @@ connectDB()
         console.log("🛠️ Syncing database models...");
         await sequelize.sync({ alter: true });
         console.log("✅ Database synced and schema updated successfully");
-        server.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
+        server.listen(PORT, "0.0.0.0", () => {
+            console.log(`🚀 Server running on port ${PORT} (0.0.0.0)`);
         });
     })
     .catch((err) => {
         console.error("❌ Database connection failed!");
         console.error("Error Message:", err.message);
         if (err.original) {
-            console.error("Original Error Code:", err.original.code);
-            console.error("Original Error Msg:", err.original.sqlMessage);
+            console.error("Original Error Details:", err.original);
         }
-        console.error("Stack Trace:", err.stack);
         process.exit(1);
     });
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
