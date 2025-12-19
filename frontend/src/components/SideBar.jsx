@@ -129,16 +129,6 @@ export default function SideBar({
                     </>
                 )}
             </div>
-
-            {/* Invite */}
-            <button
-                className="sidebar-btn"
-                onClick={handleCopy}
-                style={{ ...btnStyle, background: copied ? "#00b894" : "#0099ff", width: "50px", height: "50px", fontSize: "20px" }}
-                title="Copy Invite Link"
-            >
-                {copied ? "✅" : "🔗"}
-            </button>
         </div>
     );
 }

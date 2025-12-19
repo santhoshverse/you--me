@@ -13,6 +13,7 @@ import { generateRandomName } from "../utils/randomName";
 function RoomContent({ roomId, username }) {
     const navigate = useNavigate();
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const {
         localStream,
@@ -45,6 +46,12 @@ function RoomContent({ roomId, username }) {
     const handleActualLeave = () => {
         leaveRoom(roomId);
         navigate("/");
+    };
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(window.location.href);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     function handleURL(url) {
@@ -128,9 +135,29 @@ function RoomContent({ roomId, username }) {
                 </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222" }}>
-                <div style={{ padding: "10px", background: "#111", textAlign: "center" }}>
-                    <button onClick={() => setShowLeaveConfirm(true)} style={leaveRoomBtn}>
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222", width: "300px" }}>
+                <div style={{ padding: "20px", background: "#111", borderBottom: "1px solid #222" }}>
+                    <div style={{ marginBottom: "15px" }}>
+                        <div style={{ color: "#777", fontSize: "12px", textTransform: "uppercase", fontWeight: "bold", marginBottom: "5px" }}>Room Info</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a1a1a", padding: "10px", borderRadius: "8px", border: "1px solid #333" }}>
+                            <span style={{ fontSize: "14px", fontWeight: "600", color: "#ddd", overflow: "hidden", textOverflow: "ellipsis" }}>ID: {roomId}</span>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(roomId);
+                                    // Could add id-specific small feedback here if desired
+                                }}
+                                style={{ background: "transparent", border: "none", color: "#7a35f0", cursor: "pointer", fontSize: "12px" }}
+                            >
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onClick={handleCopyLink} style={{ ...shareLinkBtn, background: copied ? "#00b894" : "#7a35f0" }}>
+                        {copied ? "✅ Link Copied!" : "🔗 Copy Invite Link"}
+                    </button>
+
+                    <button onClick={() => setShowLeaveConfirm(true)} style={{ ...leaveRoomBtn, marginTop: "15px", width: "100%" }}>
                         🚪 Leave Room
                     </button>
                 </div>
@@ -147,7 +174,10 @@ function RoomContent({ roomId, username }) {
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-                <div style={{ background: "#111", padding: "10px", textAlign: "center" }}>
+                <div style={{ background: "#111", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" }}>
+                    <div style={{ color: "#777", fontSize: "12px", border: "1px solid #333", padding: "5px 10px", borderRadius: "5px", background: "#000" }}>
+                        ROOM: <span style={{ color: "#7a35f0", fontWeight: "bold" }}>{roomId}</span>
+                    </div>
                     <input
                         type="text"
                         placeholder="Paste YouTube, Video, or Website URL..."
@@ -158,9 +188,9 @@ function RoomContent({ roomId, username }) {
                             }
                         }}
                         style={{
-                            width: "70%",
-                            padding: "12px",
-                            fontSize: "18px",
+                            width: "60%",
+                            padding: "10px",
+                            fontSize: "14px",
                             borderRadius: "8px",
                             border: "1px solid #333",
                             background: "#222",
@@ -271,8 +301,11 @@ export default function RoomPage() {
     return (
         <div style={joinScreenContainer}>
             <div style={joinBox}>
-                <h1 style={{ marginBottom: "10px" }}>Ready to join?</h1>
-                <p style={{ color: "#aaa", marginBottom: "30px" }}>Enter your name to enter the room</p>
+                <h1 style={{ marginBottom: "5px" }}>Ready to join?</h1>
+                <p style={{ color: "#7a35f0", fontWeight: "bold", fontSize: "14px", marginBottom: "30px" }}>
+                    Room: {roomId}
+                </p>
+                <p style={{ color: "#aaa", marginBottom: "20px" }}>Enter your name to enter the room</p>
 
                 <input
                     type="text"
@@ -406,4 +439,17 @@ const modalLeaveBtn = {
     fontWeight: "600",
     fontSize: "16px",
     boxShadow: "0 4px 15px rgba(255, 71, 87, 0.4)"
+};
+
+const shareLinkBtn = {
+    width: "100%",
+    padding: "12px",
+    fontSize: "14px",
+    fontWeight: "bold",
+    borderRadius: "8px",
+    border: "none",
+    color: "white",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    boxShadow: "0 4px 12px rgba(122, 53, 240, 0.3)"
 };
