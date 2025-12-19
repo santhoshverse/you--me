@@ -19,10 +19,14 @@ export function socketHandler(io) {
         });
 
         // Join room
-        socket.on("join-room", async ({ roomId, peerId }) => {
-            console.log(`📥 JOIN REQUEST: Room=${roomId}, Peer=${peerId}, Socket=${socket.id}`);
+        socket.on("join-room", async ({ roomId, peerId, username }) => {
+            console.log(`📥 JOIN REQUEST: Room=${roomId}, Peer=${peerId}, Username=${username}, Socket=${socket.id}`);
             socket.join(roomId);
             socket.roomId = roomId;
+
+            if (username) {
+                socket.username = username;
+            }
 
             // Set host if first user
             if (!io.sockets.adapter.rooms.get(roomId) || io.sockets.adapter.rooms.get(roomId).size === 1) {
@@ -34,7 +38,7 @@ export function socketHandler(io) {
                 await RoomMember.upsert({
                     room_id: roomId,
                     peer_id: peerId,
-                    username: socket.username,
+                    username: socket.username || "Guest",
                     mic_enabled: true,
                     cam_enabled: true,
                     is_sharing: false

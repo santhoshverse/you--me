@@ -10,7 +10,7 @@ export default function useWebRTC() {
   const [screenStream, setScreenStream] = useState(null);
   const [micEnabled, setMicEnabled] = useState(true);
   const [camEnabled, setCamEnabled] = useState(true);
-  const [username] = useState(localStorage.getItem("name") || "Guest");
+  const [username, setUsername] = useState(localStorage.getItem("name") || "Guest");
   const [isHost, setIsHost] = useState(false);
 
   const peerConnections = useRef({});
@@ -198,7 +198,8 @@ export default function useWebRTC() {
 
   // Renamed tryingToJoin -> joinRoom
   // This just sets the INTENT to join. The effect below handles the actual join when ready.
-  function joinRoom(roomId) {
+  function joinRoom(roomId, name) {
+    if (name) setUsername(name);
     roomIdRef.current = roomId;
   }
 
@@ -213,8 +214,8 @@ export default function useWebRTC() {
   async function initSocketJoin(roomId) {
     console.log("🚀 JOINING ROOM:", roomId, "Stream Ready:", !!localStream);
 
-    socket.emit("register", { peerId: peerId.current, username });
-    socket.emit("join-room", { roomId, peerId: peerId.current });
+    socket.emit("register", { peerId: peerId.current, username: username });
+    socket.emit("join-room", { roomId, peerId: peerId.current, username: username });
 
     socket.on("host-update", ({ hostPeerId }) => {
       setIsHost(hostPeerId === peerId.current);
