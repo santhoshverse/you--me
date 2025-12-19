@@ -330,10 +330,36 @@ export default function useWebRTC() {
     });
   }
 
+  function leaveRoom(roomId) {
+    console.log("🚪 LEAVING ROOM:", roomId);
+
+    // 1. Stop all local tracks
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+    }
+
+    // 2. Close all PeerConnections
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
+
+    // 3. Notify Backend
+    socket.emit("leave-room", { roomId, peerId: peerId.current });
+
+    // 4. Reset state
+    setPeers({});
+    setLocalStream(null);
+    setScreenStream(null);
+    setIsSharing(false);
+  }
+
   return {
     localStream,
     peers,
     joinRoom,
+    leaveRoom,
     startScreenShare,
     stopScreenShare,
     isSharing,

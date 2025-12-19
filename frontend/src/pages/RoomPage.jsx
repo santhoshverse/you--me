@@ -11,10 +11,14 @@ import { generateRandomName } from "../utils/randomName";
 
 // --- Sub-component: The actual room content ---
 function RoomContent({ roomId, username }) {
+    const navigate = useNavigate();
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
     const {
         localStream,
         peers,
         joinRoom,
+        leaveRoom,
         startScreenShare,
         stopScreenShare,
         isSharing,
@@ -37,6 +41,11 @@ function RoomContent({ roomId, username }) {
     useEffect(() => {
         joinRoom(roomId, username);
     }, [roomId, username]);
+
+    const handleActualLeave = () => {
+        leaveRoom(roomId);
+        navigate("/");
+    };
 
     function handleURL(url) {
         if (!url) return;
@@ -104,16 +113,38 @@ function RoomContent({ roomId, username }) {
 
     return (
         <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
-            <ChatPanel
-                messages={messages}
-                chatInput={chatInput}
-                setChatInput={setChatInput}
-                sendMessage={sendMessage}
-                socket={socket}
-                roomId={roomId}
-                username={username}
-                peers={peers}
-            />
+
+            {/* Confirmation Modal Overlay */}
+            {showLeaveConfirm && (
+                <div style={modalOverlay}>
+                    <div style={modalBox}>
+                        <h2 style={{ marginBottom: "15px" }}>Leave Room?</h2>
+                        <p style={{ color: "#aaa", marginBottom: "25px" }}>Are you sure you want to exit the room? This will stop your stream.</p>
+                        <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                            <button onClick={() => setShowLeaveConfirm(false)} style={modalCancelBtn}>Cancel</button>
+                            <button onClick={handleActualLeave} style={modalLeaveBtn}>Leave</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222" }}>
+                <div style={{ padding: "10px", background: "#111", textAlign: "center" }}>
+                    <button onClick={() => setShowLeaveConfirm(true)} style={leaveRoomBtn}>
+                        🚪 Leave Room
+                    </button>
+                </div>
+                <ChatPanel
+                    messages={messages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    sendMessage={sendMessage}
+                    socket={socket}
+                    roomId={roomId}
+                    username={username}
+                    peers={peers}
+                />
+            </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
                 <div style={{ background: "#111", padding: "10px", textAlign: "center" }}>
@@ -314,4 +345,65 @@ const joinButton = {
     cursor: "pointer",
     fontWeight: "bold",
     transition: "transform 0.2s"
+};
+
+const leaveRoomBtn = {
+    background: "#ff4757",
+    color: "white",
+    border: "none",
+    padding: "8px 16px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "14px",
+    transition: "all 0.2s",
+    boxShadow: "0 4px 10px rgba(255, 71, 87, 0.3)"
+};
+
+const modalOverlay = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: "rgba(0,0,0,0.85)",
+    zIndex: 9999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backdropFilter: "blur(5px)"
+};
+
+const modalBox = {
+    background: "#1c1c1c",
+    padding: "30px",
+    borderRadius: "15px",
+    width: "90%",
+    maxWidth: "400px",
+    textAlign: "center",
+    boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
+    border: "1px solid #333"
+};
+
+const modalCancelBtn = {
+    background: "#333",
+    color: "white",
+    border: "none",
+    padding: "12px 25px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "16px"
+};
+
+const modalLeaveBtn = {
+    background: "#ff4757",
+    color: "white",
+    border: "none",
+    padding: "12px 25px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "16px",
+    boxShadow: "0 4px 15px rgba(255, 71, 87, 0.4)"
 };
