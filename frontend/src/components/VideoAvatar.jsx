@@ -1,37 +1,61 @@
 import React, { useRef, useEffect } from "react";
 
+const avatarSize = "110px"; // Slightly smaller for floating
+
 const noCamStyle = {
     width: "100%",
     height: "100%",
-    background: "#333",
+    background: "linear-gradient(135deg, #2c3e50, #000000)",
     color: "white",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontSize: "50px"
+    fontSize: "30px",
+    borderRadius: "50%",
+    border: "2px solid rgba(122, 53, 240, 0.5)"
 };
 
 const micActiveStyle = {
-    boxShadow: "0 0 15px 4px #29b6f6"
+    boxShadow: "0 0 20px 5px rgba(41, 182, 246, 0.6)",
+    border: "2px solid #29b6f6"
+};
+
+const idleStyle = {
+    boxShadow: "0 8px 16px rgba(0,0,0,0.5)",
+    border: "2px solid rgba(255,255,255,0.2)"
 };
 
 export default function VideoAvatar({ stream, label, micEnabled = true, camEnabled = true }) {
     const videoRef = useRef();
 
     useEffect(() => {
-        if (videoRef.current) {
+        if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(() => { });
         }
     }, [stream]);
 
+    const isSelf = label === "You" || label === localStorage.getItem("name");
+
     return (
         <div style={{ textAlign: "center", position: "relative" }}>
-            <div className="avatar" style={micEnabled ? micActiveStyle : {}}>
-                {camEnabled ? (
+            <div
+                className="avatar-container"
+                style={{
+                    width: avatarSize,
+                    height: avatarSize,
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    position: "relative",
+                    background: "#000",
+                    transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                    ...(micEnabled ? micActiveStyle : idleStyle)
+                }}
+            >
+                {camEnabled && stream ? (
                     <video
                         ref={videoRef}
-                        muted={label === "You" || label === localStorage.getItem("name")}
+                        muted={isSelf}
                         autoPlay
                         playsInline
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -40,24 +64,36 @@ export default function VideoAvatar({ stream, label, micEnabled = true, camEnabl
                     <div style={noCamStyle}>{label ? label[0].toUpperCase() : "?"}</div>
                 )}
 
-                {/* Overlay Icons */}
+                {/* Status Icons Overlay */}
                 <div style={{
                     position: "absolute",
-                    bottom: "5px",
-                    right: "5px",
+                    bottom: "8px",
+                    right: "8px",
                     display: "flex",
-                    gap: "5px",
-                    background: "rgba(0,0,0,0.6)",
-                    borderRadius: "4px",
-                    padding: "2px 5px",
-                    fontSize: "12px"
+                    gap: "4px",
+                    background: "rgba(0,0,0,0.7)",
+                    borderRadius: "50%",
+                    padding: "4px",
+                    border: "1px solid rgba(255,255,255,0.1)"
                 }}>
-                    {!micEnabled && <span>🔇</span>}
-                    {!camEnabled && <span>🚫</span>}
+                    {!micEnabled && <span style={{ fontSize: "10px" }}>🔇</span>}
+                    {!camEnabled && <span style={{ fontSize: "10px" }}>🚫</span>}
                 </div>
             </div>
 
-            <p style={{ marginTop: "8px", fontWeight: "bold", textShadow: "0 1px 3px black" }}>{label}</p>
+            <p style={{
+                marginTop: "10px",
+                fontWeight: "700",
+                color: "white",
+                fontSize: "13px",
+                textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+                background: "rgba(0,0,0,0.4)",
+                padding: "2px 8px",
+                borderRadius: "10px",
+                display: "inline-block"
+            }}>
+                {label}
+            </p>
         </div>
     );
 }

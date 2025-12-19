@@ -202,6 +202,7 @@ function RoomContent({ roomId, username }) {
 
                 <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     <FloatingReactions roomId={roomId} />
+
                     <YouTubePlayer
                         roomId={roomId}
                         localVideoUrl={localVideoUrl}
@@ -221,16 +222,27 @@ function RoomContent({ roomId, username }) {
                             />
                         </div>
                     )}
-                </div>
 
-                <div style={{ height: "180px" }}>
-                    <CouchLayout
-                        localStream={localStream}
-                        peers={peers}
-                        username={username}
-                        isHost={isHost}
-                        onKick={kickPeer}
-                    />
+                    {/* Floating Camera Overlay (Avatars) */}
+                    <div style={{
+                        position: "absolute",
+                        bottom: "20px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        zIndex: 100,
+                        width: "auto",
+                        pointerEvents: "none" // Let clicks pass through to video unless on an avatar
+                    }}>
+                        <div style={{ pointerEvents: "auto" }}>
+                            <CouchLayout
+                                localStream={localStream}
+                                peers={peers}
+                                username={username}
+                                isHost={isHost}
+                                onKick={kickPeer}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
