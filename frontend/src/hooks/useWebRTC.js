@@ -62,20 +62,8 @@ export default function useWebRTC() {
     const audioTrack = localStream.getAudioTracks()[0];
     const newEnabled = !micEnabled;
 
-    if (!newEnabled) {
-      if (audioTrack) {
-        audioTrack.stop();
-        localStream.removeTrack(audioTrack);
-      }
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const newTrack = stream.getAudioTracks()[0];
-        localStream.addTrack(newTrack);
-        await replaceTrackInPeers(newTrack);
-      } catch (e) {
-        console.warn("Failed to re-enable mic:", e);
-      }
+    if (audioTrack) {
+      audioTrack.enabled = newEnabled;
     }
 
     setMicEnabled(newEnabled);
@@ -91,20 +79,8 @@ export default function useWebRTC() {
     const videoTrack = localStream.getVideoTracks()[0];
     const newEnabled = !camEnabled;
 
-    if (!newEnabled) {
-      if (videoTrack) {
-        videoTrack.stop();
-        localStream.removeTrack(videoTrack);
-      }
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const newTrack = stream.getVideoTracks()[0];
-        localStream.addTrack(newTrack);
-        await replaceTrackInPeers(newTrack);
-      } catch (e) {
-        console.warn("Failed to re-enable cam:", e);
-      }
+    if (videoTrack) {
+      videoTrack.enabled = newEnabled;
     }
 
     setCamEnabled(newEnabled);

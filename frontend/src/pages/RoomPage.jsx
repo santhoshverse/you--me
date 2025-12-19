@@ -29,14 +29,18 @@ function RoomContent({ roomId, username }) {
 
     const [localVideoUrl, setLocalVideoUrl] = useState(null);
 
+    const resetMediaModes = () => {
+        setLocalVideoUrl(null);
+        if (isSharing) stopScreenShare(roomId);
+    };
+
     useEffect(() => {
         joinRoom(roomId, username);
     }, [roomId, username]);
 
     function handleURL(url) {
         if (!url) return;
-        setLocalVideoUrl(null);
-        if (isSharing) stopScreenShare(roomId);
+        resetMediaModes();
         socket.emit("set-media", {
             roomId,
             media: { type: "url", url }
@@ -45,9 +49,9 @@ function RoomContent({ roomId, username }) {
 
     const handleSelectMedia = (type, payload) => {
         if (type === "file" && payload) {
+            resetMediaModes();
             const url = URL.createObjectURL(payload);
             setLocalVideoUrl(url);
-            if (isSharing) stopScreenShare(roomId);
             setTimeout(() => {
                 socket.emit("set-media", {
                     roomId,
@@ -58,6 +62,7 @@ function RoomContent({ roomId, username }) {
             if (isSharing) {
                 stopScreenShare(roomId);
             } else {
+                resetMediaModes();
                 socket.emit("set-media", { roomId, media: null });
                 startScreenShare(roomId);
             }
