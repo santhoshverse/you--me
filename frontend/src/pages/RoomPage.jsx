@@ -103,34 +103,22 @@ function RoomContent({ roomId, username }) {
                 setLocalVideoUrl(null);
             }
             if (history) {
-                // Map DB snake_case names to frontend expectations if needed
-                // Currently backend sends: { id, message, username, time, reactions }
-                // Let's ensure 'message' field is present if backend sent 'text'
                 const formattedHistory = history.map(m => ({
                     id: m.id,
                     message: m.text || m.message,
                     username: m.username,
-                    time: m.createdAt,
-                    reactions: m.reactions || {}
+                    time: m.createdAt
                 }));
                 setMessages(formattedHistory);
             }
         };
 
-        const handleChatReaction = ({ messageId, reactions }) => {
-            setMessages(prev => prev.map(msg =>
-                msg.id === messageId ? { ...msg, reactions } : msg
-            ));
-        };
-
         socket.on("chat-message", handleChat);
         socket.on("room-state", handleRoomState);
-        socket.on("chat-reaction", handleChatReaction);
 
         return () => {
             socket.off("chat-message", handleChat);
             socket.off("room-state", handleRoomState);
-            socket.off("chat-reaction", handleChatReaction);
         }
     }, []);
 

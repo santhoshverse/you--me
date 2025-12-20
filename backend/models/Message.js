@@ -7,7 +7,6 @@ const Message = sequelize.define("Message", {
     user_id: DataTypes.BIGINT,
     username: DataTypes.STRING, // Added for quick display
     text: DataTypes.TEXT,
-    reactions: { type: DataTypes.JSON, defaultValue: {} }, // { "❤️": ["Alice", "Bob"] }
     createdAt: { type: DataTypes.DATE, allowNull: true, field: 'created_at' },
     updatedAt: { type: DataTypes.DATE, allowNull: true, field: 'updated_at' }
 }, { tableName: "messages", timestamps: true, underscored: true });

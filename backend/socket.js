@@ -78,16 +78,14 @@ export function socketHandler(io) {
                 const savedMsg = await Message.create({
                     room_id: roomId,
                     username: username,
-                    text: message,
-                    reactions: {}
+                    text: message
                 });
 
                 io.to(roomId).emit("chat-message", {
                     id: savedMsg.id,
                     message,
                     username,
-                    time: savedMsg.createdAt,
-                    reactions: {}
+                    time: savedMsg.createdAt
                 });
             } catch (e) {
                 console.error("Failed to save message:", e);
@@ -225,36 +223,6 @@ export function socketHandler(io) {
             socket.to(roomId).emit("typing", { peerId: socket.peerId, isTyping, username });
         });
 
-        socket.on("chat-reaction", async ({ roomId, messageId, reaction, username }) => {
-            try {
-                const msg = await Message.findByPk(messageId);
-                if (!msg) return;
-
-                const reactions = msg.reactions || {};
-                const users = reactions[reaction] || [];
-
-                const userIndex = users.indexOf(username);
-                if (userIndex > -1) {
-                    // Toggle off
-                    users.splice(userIndex, 1);
-                } else {
-                    // Toggle on
-                    users.push(username);
-                }
-
-                if (users.length === 0) {
-                    delete reactions[reaction];
-                } else {
-                    reactions[reaction] = users;
-                }
-
-                await Message.update({ reactions }, { where: { id: messageId } });
-
-                io.to(roomId).emit("chat-reaction", { messageId, reactions });
-            } catch (e) {
-                console.error("Reaction failed:", e);
-            }
-        });
 
 
         socket.on("disconnect", async () => {
