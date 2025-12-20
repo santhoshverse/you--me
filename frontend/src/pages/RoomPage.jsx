@@ -41,6 +41,8 @@ function RoomContent({ roomId, username }) {
         if (isSharing) stopScreenShare(roomId);
     };
 
+    const [showSecondaryActions, setShowSecondaryActions] = useState(false);
+
     useEffect(() => {
         joinRoom(roomId, username);
     }, [roomId, username]);
@@ -140,11 +142,11 @@ function RoomContent({ roomId, username }) {
             )}
 
             <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222", width: "300px" }}>
-                <div style={{ padding: "20px", background: "#111", borderBottom: "1px solid #222" }}>
-                    <div style={{ marginBottom: "15px" }}>
-                        <div style={{ color: "#777", fontSize: "12px", textTransform: "uppercase", fontWeight: "bold", marginBottom: "5px" }}>Room Info</div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a1a1a", padding: "10px", borderRadius: "8px", border: "1px solid #333" }}>
-                            <span style={{ fontSize: "14px", fontWeight: "600", color: "#ddd", overflow: "hidden", textOverflow: "ellipsis" }}>ID: {roomId}</span>
+                <div style={{ padding: "15px", background: "#111", borderBottom: "1px solid #222" }}>
+                    <div style={{ marginBottom: "12px" }}>
+                        <div style={{ color: "#777", fontSize: "10px", textTransform: "uppercase", fontWeight: "bold", marginBottom: "5px", letterSpacing: "0.5px" }}>Room Details</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a1a1a", padding: "8px 12px", borderRadius: "8px", border: "1px solid #333" }}>
+                            <span style={{ fontSize: "13px", fontWeight: "600", color: "#ddd", overflow: "hidden", textOverflow: "ellipsis" }}>ID: {roomId}</span>
                             <button
                                 onClick={async () => {
                                     const success = await copyToClipboard(roomId);
@@ -153,20 +155,37 @@ function RoomContent({ roomId, username }) {
                                         setTimeout(() => setIdCopied(false), 2000);
                                     }
                                 }}
-                                style={{ background: "transparent", border: "none", color: idCopied ? "#00b894" : "#7a35f0", cursor: "pointer", fontSize: "12px", transition: "color 0.2s", fontWeight: "bold" }}
+                                style={{ background: "transparent", border: "none", color: idCopied ? "#00b894" : "#7a35f0", cursor: "pointer", fontSize: "11px", transition: "color 0.2s", fontWeight: "bold" }}
                             >
                                 {idCopied ? "Copied!" : "Copy"}
                             </button>
                         </div>
                     </div>
 
-                    <button onClick={handleCopyLink} style={{ ...shareLinkBtn, background: copied ? "#00b894" : "#7a35f0" }}>
-                        {copied ? "✅ Link Copied!" : "🔗 Copy Invite Link"}
+                    <button
+                        onClick={() => setShowSecondaryActions(!showSecondaryActions)}
+                        style={{ ...shareLinkBtn, background: showSecondaryActions ? "#222" : "#7a35f0", marginBottom: showSecondaryActions ? "10px" : "0" }}
+                    >
+                        {showSecondaryActions ? "🔼 Hide Options" : "🚀 Share Room"}
                     </button>
 
-                    <button onClick={() => setShowLeaveConfirm(true)} style={{ ...leaveRoomBtn, marginTop: "15px", width: "100%" }}>
-                        🚪 Leave Room
-                    </button>
+                    {showSecondaryActions && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", animation: "slideDown 0.2s ease-out" }}>
+                            <style>{`
+                                @keyframes slideDown {
+                                    from { opacity: 0; transform: translateY(-10px); }
+                                    to { opacity: 1; transform: translateY(0); }
+                                }
+                            `}</style>
+                            <button onClick={handleCopyLink} style={{ ...shareLinkBtn, background: copied ? "#00b894" : "#1a1a1a", border: "1px solid #333", py: "8px", fontSize: "12px", boxShadow: "none" }}>
+                                {copied ? "✅ Link Copied!" : "🔗 Copy Invite Link"}
+                            </button>
+
+                            <button onClick={() => setShowLeaveConfirm(true)} style={{ ...leaveRoomBtn, width: "100%", padding: "8px", fontSize: "12px", background: "transparent", border: "1px solid #444", boxShadow: "none" }}>
+                                🚪 Leave Room
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <ChatPanel
                     messages={messages}
