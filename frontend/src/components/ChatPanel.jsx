@@ -60,14 +60,24 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
     };
 
     return (
-        <div style={{ padding: 20, height: "100%", background: "#1a1a1a", boxSizing: "border-box", width: "300px", borderRight: "1px solid #333", display: "flex", flexDirection: "column" }}>
-            <h3 style={{ margin: "0 0 10px 0" }}>Chat</h3>
+        <div style={{
+            padding: "15px",
+            height: "100%",
+            background: "#121212",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden" // Prevent overall panel from growing
+        }}>
+            <h3 style={{ margin: "0 0 10px 0", color: "#7a35f0", fontSize: "16px", textTransform: "uppercase", letterSpacing: "1px" }}>Chat</h3>
 
-            {/* Member List */}
-            <UserList peers={peers} localUsername={username} />
+            {/* Member List - Stays fixed at top or scrolls independently if needed */}
+            <div style={{ marginBottom: "15px", maxHeight: "150px", overflowY: "auto" }}>
+                <UserList peers={peers} localUsername={username} />
+            </div>
 
             {/* Floating Emoji Bar */}
-            <div style={{ display: "flex", gap: "5px", marginBottom: "10px", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "15px", justifyContent: "center", background: "#1a1a1a", padding: "8px", borderRadius: "10px" }}>
                 {["🎉", "❤️", "😂", "🔥", "👍", "😳"].map(emoji => (
                     <button
                         key={emoji}
@@ -76,64 +86,76 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                             background: "transparent",
                             border: "none",
                             cursor: "pointer",
-                            fontSize: "20px",
-                            padding: "2px",
+                            fontSize: "18px",
+                            padding: "4px",
                             transition: "transform 0.1s"
                         }}
-                        onMouseDown={(e) => e.target.style.transform = "scale(0.8)"}
-                        onMouseUp={(e) => e.target.style.transform = "scale(1)"}
+                        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.8)"}
+                        onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                        className="emoji-btn"
                     >
                         {emoji}
                     </button>
                 ))}
             </div>
 
+            {/* Messages Area - Only this part scrolls */}
             <div
                 ref={messagesContainerRef}
                 style={{
                     flex: 1,
                     overflowY: "auto",
-                    background: "#111",
-                    padding: 10,
-                    borderRadius: "5px",
+                    background: "#0a0a0a",
+                    padding: "12px",
+                    borderRadius: "8px",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "8px"
+                    gap: "10px",
+                    border: "1px solid #222"
                 }}>
                 {(!messages || messages.length === 0) ? (
-                    <p style={{ color: "gray" }}>No messages yet...</p>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.3 }}>
+                        <p style={{ color: "gray", fontSize: "14px" }}>No messages yet...</p>
+                    </div>
                 ) : (
                     messages.map((msg, i) => (
-                        <div key={i} style={{ wordWrap: "break-word" }}>
-                            <strong style={{ color: "#29b6f6" }}>{msg.username}: </strong>
-                            <span style={{ color: "#eee" }}>{msg.message}</span>
+                        <div key={i} style={{ wordWrap: "break-word", lineHeight: "1.4" }}>
+                            <strong style={{ color: "#7a35f0", fontSize: "13px" }}>{msg.username}</strong>
+                            <div style={{ color: "#eee", fontSize: "14px", marginTop: "2px" }}>{msg.message}</div>
                         </div>
                     ))
                 )}
                 {typingUsers.size > 0 && (
-                    <div style={{ color: "#888", fontStyle: "italic", fontSize: "12px", marginTop: "5px" }}>
-                        {Array.from(typingUsers).join(", ")} is typing...
+                    <div style={{ color: "#7a35f0", fontStyle: "italic", fontSize: "11px", marginTop: "5px", opacity: 0.8 }}>
+                        {Array.from(typingUsers).join(", ")} {typingUsers.size === 1 ? "is" : "are"} typing...
                     </div>
                 )}
-
             </div>
-            <input
-                type="text"
-                placeholder="Type message..."
-                value={chatInput}
-                onChange={handleInput}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                style={{
-                    width: "100%",
-                    padding: 10,
-                    marginTop: 10,
-                    boxSizing: "border-box",
-                    borderRadius: "5px",
-                    border: "none",
-                    background: "#333",
-                    color: "white"
-                }}
-            />
+
+            {/* Input Box - Remains fixed at bottom */}
+            <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
+                <input
+                    type="text"
+                    placeholder="Message..."
+                    value={chatInput}
+                    onChange={handleInput}
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    style={{
+                        flex: 1,
+                        padding: "12px",
+                        boxSizing: "border-box",
+                        borderRadius: "10px",
+                        border: "1px solid #333",
+                        background: "#1a1a1a",
+                        color: "white",
+                        outline: "none",
+                        fontSize: "14px",
+                        transition: "border-color 0.2s"
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#7a35f0"}
+                    onBlur={(e) => e.target.style.borderColor = "#333"}
+                />
+            </div>
         </div>
     );
 }
