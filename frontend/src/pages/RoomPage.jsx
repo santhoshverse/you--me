@@ -297,86 +297,20 @@ export default function RoomPage() {
     const { roomId } = useParams();
     const navigate = useNavigate();
 
-    const [hasJoined, setHasJoined] = useState(false);
     const [name, setName] = useState(localStorage.getItem("name") || "");
-    const [tempName, setTempName] = useState(localStorage.getItem("name") || generateRandomName());
-    const [isRegistering, setIsRegistering] = useState(false);
+    const userId = localStorage.getItem("userId");
 
-    // If already joined (e.g. state persists or we just clicked), show room
-    if (hasJoined && name) {
-        return <RoomContent roomId={roomId} username={name} />;
+    useEffect(() => {
+        if (!userId || !name) {
+            navigate("/auth", { state: { from: location } });
+        }
+    }, [userId, name, navigate]);
+
+    if (!userId || !name) {
+        return <div style={{ background: "#0a0a0a", height: "100vh", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>Checking identity...</div>;
     }
 
-    const handleJoin = async () => {
-        if (!tempName.trim()) return;
-
-        setIsRegistering(true);
-        try {
-            // Register guest if not already registered (or just to be sure we have a userId)
-            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
-            const res = await fetch(`${BACKEND_URL}/api/rooms/guest`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: tempName })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem("userId", data.userId);
-                localStorage.setItem("name", data.name);
-                setName(data.name);
-                setHasJoined(true);
-            } else {
-                // Fallback if API fails but we want to allow joining
-                localStorage.setItem("name", tempName);
-                setName(tempName);
-                setHasJoined(true);
-            }
-        } catch (err) {
-            console.error("Registration failed:", err);
-            localStorage.setItem("name", tempName);
-            setName(tempName);
-            setHasJoined(true);
-        } finally {
-            setIsRegistering(false);
-        }
-    };
-
-    return (
-        <div style={joinScreenContainer}>
-            <div style={joinBox}>
-                <h1 style={{ marginBottom: "5px" }}>Ready to join?</h1>
-                <p style={{ color: "#7a35f0", fontWeight: "bold", fontSize: "14px", marginBottom: "30px" }}>
-                    Room: {roomId}
-                </p>
-                <p style={{ color: "#aaa", marginBottom: "20px" }}>Enter your name to enter the room</p>
-
-                <input
-                    type="text"
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    placeholder="Your Name"
-                    style={joinInput}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-                />
-
-                <button
-                    onClick={handleJoin}
-                    style={joinButton}
-                    disabled={isRegistering}
-                >
-                    {isRegistering ? "Joining..." : "Join Room"}
-                </button>
-
-                <button
-                    onClick={() => navigate("/")}
-                    style={{ ...joinButton, background: "transparent", border: "1px solid #444", marginTop: "10px" }}
-                >
-                    Back to Home
-                </button>
-            </div>
-        </div>
-    );
+    return <RoomContent roomId={roomId} username={name} />;
 }
 
 const joinScreenContainer = {

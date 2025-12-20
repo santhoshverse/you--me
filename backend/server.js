@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import { PORT, DB_CONFIG } from "./config.js";
 import { connectDB, sequelize } from "./db.js";
 import roomRoutes from "./routes/roomRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import { socketHandler } from "./socket.js";
 
 // Production Server Initialization
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/rooms", roomRoutes);
+app.use("/api/auth", authRoutes);
 
 // Start HTTP server
 const server = http.createServer(app);

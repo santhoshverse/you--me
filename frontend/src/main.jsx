@@ -14,8 +14,8 @@ import PublicRoomsPage from "./pages/PublicRoomsPage.jsx";
 ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
         <Routes>
-            <Route path="/" element={<EnterNamePage />} />
-            <Route path="/enter" element={<EnterNamePage />} />
+            <Route path="/" element={<AuthPage />} />
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="/create" element={<CreateRoomPage />} />
             <Route path="/rooms" element={<PublicRoomsPage />} />
             <Route path="/room/:roomId" element={<RoomPage />} />
