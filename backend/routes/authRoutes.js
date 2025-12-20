@@ -17,8 +17,11 @@ router.post("/signup", async (req, res) => {
             return res.status(400).json({ error: "Passwords do not match" });
         }
 
-        const existing = await User.findOne({ where: { username } });
-        if (existing) return res.status(400).json({ error: "Username already taken" });
+        const existingUsername = await User.findOne({ where: { username } });
+        if (existingUsername) return res.status(400).json({ error: "Username already taken" });
+
+        const existingEmail = await User.findOne({ where: { email } });
+        if (existingEmail) return res.status(400).json({ error: "Email already registered" });
 
         const user = await User.create({
             username,
@@ -29,7 +32,8 @@ router.post("/signup", async (req, res) => {
 
         res.json({ userId: user.id, username: user.username, name: user.display_name });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error("Signup error:", e);
+        res.status(500).json({ error: e.message || "Internal server error" });
     }
 });
 
