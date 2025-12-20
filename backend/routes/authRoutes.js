@@ -7,12 +7,19 @@ const router = express.Router();
 // Signup
 router.post("/signup", async (req, res) => {
     try {
-        const { username, password, display_name, email } = req.body;
-        // Check if user exists
+        const { username, password, confirmPassword, display_name, email } = req.body;
+
+        // Validation
+        if (!username || !password || !confirmPassword || !email) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
+        if (password !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords do not match" });
+        }
+
         const existing = await User.findOne({ where: { username } });
         if (existing) return res.status(400).json({ error: "Username already taken" });
 
-        // In a real app, use bcrypt here. For now, simple string for MVP if restricted.
         const user = await User.create({
             username,
             password_hash: password, // TODO: bcrypt
@@ -39,19 +46,10 @@ router.post("/login", async (req, res) => {
     }
 });
 
-// Guest
-router.post("/guest", async (req, res) => {
-    try {
-        const { name } = req.body;
-        // For guest, we create a temporary user record or just return a session
-        const user = await User.create({
-            display_name: name || "Guest",
-            username: `guest_${uuidv4().substring(0, 8)}`
-        });
-        res.json({ userId: user.id, name: user.display_name, isGuest: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+// Social Login Placeholder
+router.post("/social", async (req, res) => {
+    // Placeholder for Google/Apple auth logic
+    res.status(501).json({ error: "Social login coming soon!" });
 });
 
 export default router;

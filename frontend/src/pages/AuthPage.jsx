@@ -5,8 +5,8 @@ import { generateRandomName } from "../utils/randomName";
 export default function AuthPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [mode, setMode] = useState("choice"); // choice, login, signup, guest
-    const [form, setForm] = useState({ username: "", password: "", name: "", email: "" });
+    const [mode, setMode] = useState("choice"); // choice, login, signup
+    const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", name: "", email: "" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -16,16 +16,20 @@ export default function AuthPage() {
     const handleAction = async (e) => {
         if (e) e.preventDefault();
         setError("");
-        setLoading(true);
 
-        const endpoint = mode === "login" ? "/api/auth/login" : (mode === "signup" ? "/api/auth/signup" : "/api/auth/guest");
-        const body = mode === "guest" ? { name: form.name || generateRandomName() } : form;
+        // Client-side validation
+        if (mode === "signup" && form.password !== form.confirmPassword) {
+            return setError("Passwords do not match");
+        }
+
+        setLoading(true);
+        const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
 
         try {
             const res = await fetch(`${BACKEND_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
+                body: JSON.stringify(form)
             });
 
             const data = await res.json();
@@ -44,18 +48,31 @@ export default function AuthPage() {
         }
     };
 
+    const handleSocial = (provider) => {
+        alert(`${provider} login coming soon!`);
+    };
+
     const renderCard = () => {
         if (mode === "choice") {
             return (
                 <>
                     <h1 style={titleStyle}>Welcome to You&Me</h1>
-                    <p style={taglineStyle}>Watch, chat, and hang out together in real time</p>
+                    <p style={taglineStyle}>Watch, chat, and connect together</p>
 
                     <div style={buttonGroup}>
                         <button onClick={() => setMode("login")} style={primaryBtn}>🔐 Login</button>
                         <button onClick={() => setMode("signup")} style={secondaryBtn}>✨ Sign Up</button>
-                        <div style={divider}>or</div>
-                        <button onClick={() => setMode("guest")} style={guestBtn}>👤 Continue as Guest</button>
+                        <div style={divider}>or continue with</div>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <button onClick={() => handleSocial("Google")} style={socialBtn}>
+                                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="G" style={{ width: "14px", marginRight: "6px" }} />
+                                Google
+                            </button>
+                            <button onClick={() => handleSocial("Apple")} style={socialBtn}>
+                                <span style={{ fontSize: "16px", marginRight: "6px" }}></span>
+                                Apple
+                            </button>
+                        </div>
                     </div>
                 </>
             );
@@ -64,55 +81,53 @@ export default function AuthPage() {
         return (
             <form onSubmit={handleAction} style={formStyle}>
                 <h2 style={{ marginBottom: "10px", color: "white" }}>
-                    {mode === "login" ? "Login" : (mode === "signup" ? "New Account" : "Guest Setup")}
+                    {mode === "login" ? "Login" : "Create Account"}
                 </h2>
 
                 {error && <p style={errorStyle}>{error}</p>}
 
-                {mode !== "guest" && (
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        value={form.username}
-                        onChange={e => setForm({ ...form, username: e.target.value })}
-                        style={inputStyle}
-                        required
-                    />
-                )}
+                <input
+                    type="text"
+                    placeholder="Username"
+                    value={form.username}
+                    onChange={e => setForm({ ...form, username: e.target.value })}
+                    style={inputStyle}
+                    required
+                />
 
                 {mode === "signup" && (
                     <input
                         type="email"
-                        placeholder="Email (Optional)"
+                        placeholder="Email"
                         value={form.email}
                         onChange={e => setForm({ ...form, email: e.target.value })}
-                        style={inputStyle}
-                    />
-                )}
-
-                {mode !== "guest" && (
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={form.password}
-                        onChange={e => setForm({ ...form, password: e.target.value })}
                         style={inputStyle}
                         required
                     />
                 )}
 
-                {mode === "guest" && (
+                <input
+                    type="password"
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={e => setForm({ ...form, password: e.target.value })}
+                    style={inputStyle}
+                    required
+                />
+
+                {mode === "signup" && (
                     <input
-                        type="text"
-                        placeholder="Display Name"
-                        value={form.name}
-                        onChange={e => setForm({ ...form, name: e.target.value })}
+                        type="password"
+                        placeholder="Confirm Password"
+                        value={form.confirmPassword}
+                        onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
                         style={inputStyle}
+                        required
                     />
                 )}
 
                 <button type="submit" disabled={loading} style={primaryBtn}>
-                    {loading ? "Processing..." : "Continue"}
+                    {loading ? "Processing..." : (mode === "login" ? "Login" : "Sign Up")}
                 </button>
 
                 <button type="button" onClick={() => setMode("choice")} style={backBtn}>
@@ -220,15 +235,20 @@ const secondaryBtn = {
     transition: "background 0.2s"
 };
 
-const guestBtn = {
+const socialBtn = {
+    flex: 1,
     padding: "12px",
     borderRadius: "12px",
-    border: "none",
-    background: "transparent",
-    color: "rgba(255, 255, 255, 0.5)",
-    fontSize: "14px",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "rgba(255, 255, 255, 0.05)",
+    color: "white",
+    fontSize: "13px",
+    fontWeight: "600",
     cursor: "pointer",
-    textDecoration: "underline"
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "background 0.2s"
 };
 
 const backBtn = {

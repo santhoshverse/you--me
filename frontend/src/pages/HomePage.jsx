@@ -29,7 +29,7 @@ export default function HomePage() {
                 </div>
             ) : (
                 <Link to="/auth">
-                    <button style={primaryBtn}>🔐 Login / Guest Join</button>
+                    <button style={primaryBtn}>🔐 Login / Sign Up</button>
                 </Link>
             )}
 
