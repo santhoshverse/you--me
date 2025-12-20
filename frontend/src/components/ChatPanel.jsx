@@ -76,29 +76,6 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                 <UserList peers={peers} localUsername={username} />
             </div>
 
-            {/* Floating Emoji Bar */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "15px", justifyContent: "center", background: "#1a1a1a", padding: "8px", borderRadius: "10px" }}>
-                {["🎉", "❤️", "😂", "🔥", "👍", "😳"].map(emoji => (
-                    <button
-                        key={emoji}
-                        onClick={() => sendFloatingEmoji(emoji)}
-                        style={{
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            fontSize: "18px",
-                            padding: "4px",
-                            transition: "transform 0.1s"
-                        }}
-                        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.8)"}
-                        onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-                        className="emoji-btn"
-                    >
-                        {emoji}
-                    </button>
-                ))}
-            </div>
-
             {/* Messages Area - Only this part scrolls */}
             <div
                 ref={messagesContainerRef}
@@ -132,8 +109,49 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                 )}
             </div>
 
+            {/* Premium 3D Emoji Bar - Positioned just above input */}
+            <div style={{
+                marginTop: "15px",
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                background: "rgba(30, 30, 30, 0.6)",
+                padding: "10px",
+                borderRadius: "12px",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.05)"
+            }}>
+                {[
+                    { char: "🎉", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Party%20popper/3D/party_popper_3d.png" },
+                    { char: "❤️", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Heart/3D/heart_3d.png" },
+                    { char: "😂", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Face%20with%20tears%20of%20joy/3D/face_with_tears_of_joy_3d.png" },
+                    { char: "🔥", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Fire/3D/fire_3d.png" },
+                    { char: "👍", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Thumbs%20up/3D/thumbs_up_3d.png" },
+                    { char: "😳", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Flushed%20face/3D/flushed_face_3d.png" }
+                ].map(emoji => (
+                    <button
+                        key={emoji.char}
+                        onClick={() => sendFloatingEmoji(emoji.char)}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "0",
+                            transition: "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                            width: "32px",
+                            height: "32px"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.3) translateY(-5px)"}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1) translateY(0)"}
+                        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+                    >
+                        <img src={emoji.url} alt={emoji.char} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    </button>
+                ))}
+            </div>
+
             {/* Input Box - Remains fixed at bottom */}
-            <div style={{ marginTop: "15px", display: "flex", gap: "10px" }}>
+            <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
                 <input
                     type="text"
                     placeholder="Message..."
