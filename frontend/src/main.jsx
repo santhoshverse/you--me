@@ -7,8 +7,7 @@ import CreateRoomPage from "./pages/CreateRoomPage.jsx";
 import RoomPage from "./pages/RoomPage.jsx";
 
 import "./styles.css";
-
-import EnterNamePage from "./pages/EnterNamePage.jsx";
+import AuthPage from "./pages/AuthPage.jsx";
 import PublicRoomsPage from "./pages/PublicRoomsPage.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
