@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { copyToClipboard } from "../utils/clipboard";
 
 export default function SideBar({
     toggleMic, toggleCam, micEnabled, camEnabled, roomId,
@@ -35,10 +36,12 @@ export default function SideBar({
     const inactiveStyle = { ...btnStyle, background: "#ff4444" };
     const shareActiveStyle = { ...btnStyle, background: "#ff4d4d", animation: "pulse 2s infinite" };
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(window.location.href);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopy = async () => {
+        const success = await copyToClipboard(window.location.href);
+        if (success) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     return (
@@ -118,6 +121,18 @@ export default function SideBar({
                     title={isSharing ? "Stop Sharing" : "Share Screen"}
                 >
                     🖥️
+                </button>
+
+                <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
+
+                {/* Copy Link */}
+                <button
+                    className="sidebar-btn"
+                    onClick={handleCopy}
+                    style={copied ? { ...btnStyle, background: "#00b894" } : btnStyle}
+                    title="Copy Invite Link"
+                >
+                    {copied ? "✅" : "🔗"}
                 </button>
 
                 <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />

@@ -8,12 +8,14 @@ import SideBar from "../components/SideBar";
 import useWebRTC from "../hooks/useWebRTC";
 import FloatingReactions from "../components/FloatingReactions";
 import { generateRandomName } from "../utils/randomName";
+import { copyToClipboard } from "../utils/clipboard";
 
 // --- Sub-component: The actual room content ---
 function RoomContent({ roomId, username }) {
     const navigate = useNavigate();
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [idCopied, setIdCopied] = useState(false);
 
     const {
         localStream,
@@ -48,10 +50,12 @@ function RoomContent({ roomId, username }) {
         navigate("/");
     };
 
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(window.location.href);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopyLink = async () => {
+        const success = await copyToClipboard(window.location.href);
+        if (success) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     function handleURL(url) {
@@ -142,13 +146,16 @@ function RoomContent({ roomId, username }) {
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1a1a1a", padding: "10px", borderRadius: "8px", border: "1px solid #333" }}>
                             <span style={{ fontSize: "14px", fontWeight: "600", color: "#ddd", overflow: "hidden", textOverflow: "ellipsis" }}>ID: {roomId}</span>
                             <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText(roomId);
-                                    // Could add id-specific small feedback here if desired
+                                onClick={async () => {
+                                    const success = await copyToClipboard(roomId);
+                                    if (success) {
+                                        setIdCopied(true);
+                                        setTimeout(() => setIdCopied(false), 2000);
+                                    }
                                 }}
-                                style={{ background: "transparent", border: "none", color: "#7a35f0", cursor: "pointer", fontSize: "12px" }}
+                                style={{ background: "transparent", border: "none", color: idCopied ? "#00b894" : "#7a35f0", cursor: "pointer", fontSize: "12px", transition: "color 0.2s", fontWeight: "bold" }}
                             >
-                                Copy
+                                {idCopied ? "Copied!" : "Copy"}
                             </button>
                         </div>
                     </div>
