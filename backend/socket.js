@@ -256,9 +256,6 @@ export function socketHandler(io) {
             }
         });
 
-        socket.on("floating-emoji", ({ roomId, emoji }) => {
-            socket.to(roomId).emit("floating-emoji", { emoji, peerId: socket.peerId });
-        });
 
         socket.on("disconnect", async () => {
             // Handle Host leaving

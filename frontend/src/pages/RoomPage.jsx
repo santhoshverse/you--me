@@ -6,7 +6,6 @@ import ChatPanel from "../components/ChatPanel";
 import YouTubePlayer from "../components/YouTubePlayer";
 import SideBar from "../components/SideBar";
 import useWebRTC from "../hooks/useWebRTC";
-import FloatingReactions from "../components/FloatingReactions";
 import { generateRandomName } from "../utils/randomName";
 import { copyToClipboard } from "../utils/clipboard";
 
@@ -248,8 +247,6 @@ function RoomContent({ roomId, username }) {
                 </div>
 
                 <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    <FloatingReactions roomId={roomId} />
-
                     <YouTubePlayer
                         roomId={roomId}
                         localVideoUrl={localVideoUrl}
