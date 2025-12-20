@@ -62,17 +62,6 @@ export default function AuthPage() {
                     <div style={buttonGroup}>
                         <button onClick={() => setMode("login")} style={primaryBtn}>🔐 Login</button>
                         <button onClick={() => setMode("signup")} style={secondaryBtn}>✨ Sign Up</button>
-                        <div style={divider}>or continue with</div>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                            <button onClick={() => handleSocial("Google")} style={socialBtn}>
-                                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="G" style={{ width: "14px", marginRight: "6px" }} />
-                                Google
-                            </button>
-                            <button onClick={() => handleSocial("Apple")} style={socialBtn}>
-                                <span style={{ fontSize: "16px", marginRight: "6px" }}></span>
-                                Apple
-                            </button>
-                        </div>
                     </div>
                 </>
             );
@@ -129,6 +118,18 @@ export default function AuthPage() {
                 <button type="submit" disabled={loading} style={primaryBtn}>
                     {loading ? "Processing..." : (mode === "login" ? "Login" : "Sign Up")}
                 </button>
+
+                <div style={divider}>or continue with</div>
+                <div style={{ display: "flex", gap: "10px" }}>
+                    <button type="button" onClick={() => handleSocial("Google")} style={socialBtn}>
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="G" style={{ width: "14px", marginRight: "6px" }} />
+                        Google
+                    </button>
+                    <button type="button" onClick={() => handleSocial("Apple")} style={socialBtn}>
+                        <span style={{ fontSize: "16px", marginRight: "6px" }}></span>
+                        Apple
+                    </button>
+                </div>
 
                 <button type="button" onClick={() => setMode("choice")} style={backBtn}>
                     Back
