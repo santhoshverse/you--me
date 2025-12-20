@@ -1,4 +1,4 @@
-import { RoomState, RoomMember } from "./models/index.js";
+import { RoomState, RoomMember, Message } from "./models/index.js";
 
 const peerToSocket = new Map();
 
@@ -48,13 +48,19 @@ export function socketHandler(io) {
             // Update everyone about the room change
             io.emit("room-updated");
 
+            // Fetch state and members
             try {
                 const state = await RoomState.findOne({ where: { room_id: roomId } });
                 const members = await RoomMember.findAll({ where: { room_id: roomId } });
-                socket.emit("room-state", { state, members });
+                const messages = await Message.findAll({
+                    where: { room_id: roomId },
+                    order: [['created_at', 'ASC']],
+                    limit: 50
+                });
+                socket.emit("room-state", { state, members, messages });
             } catch (e) {
-                // Return default state if DB fails
-                socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } }, members: [] });
+                console.warn("Sync Error:", e.message);
+                socket.emit("room-state", { state: { media: null, playback: { isPlaying: false, time: 0 } }, members: [], messages: [] });
             }
 
             console.log(`📢 Emitting new-peer to room ${roomId} for peer ${peerId}`);
@@ -62,23 +68,36 @@ export function socketHandler(io) {
 
             // Notify who is host
             socket.emit("host-update", { hostPeerId: roomHosts.get(roomId) });
-
-            // Broadcast current member list to everyone in the room
-            try {
-                const members = await RoomMember.findAll({ where: { room_id: roomId } });
-                io.to(roomId).emit("room-state", { members });
-            } catch (e) { }
         });
 
         // ... [Chat Message, Offer, Answer, ICE handlers same as before] ...
 
         // Chat Message
-        socket.on("chat-message", ({ roomId, message, username }) => {
-            io.to(roomId).emit("chat-message", {
-                message,
-                username,
-                time: Date.now(),
-            });
+        socket.on("chat-message", async ({ roomId, message, username }) => {
+            try {
+                const savedMsg = await Message.create({
+                    room_id: roomId,
+                    username: username,
+                    text: message,
+                    reactions: {}
+                });
+
+                io.to(roomId).emit("chat-message", {
+                    id: savedMsg.id,
+                    message,
+                    username,
+                    time: savedMsg.createdAt,
+                    reactions: {}
+                });
+            } catch (e) {
+                console.error("Failed to save message:", e);
+                // Fallback broadcast without ID (less ideal)
+                io.to(roomId).emit("chat-message", {
+                    message,
+                    username,
+                    time: Date.now(),
+                });
+            }
         });
 
         // Offer
@@ -206,8 +225,35 @@ export function socketHandler(io) {
             socket.to(roomId).emit("typing", { peerId: socket.peerId, isTyping, username });
         });
 
-        socket.on("chat-reaction", ({ roomId, messageId, reaction, username }) => {
-            io.to(roomId).emit("chat-reaction", { messageId, reaction, username });
+        socket.on("chat-reaction", async ({ roomId, messageId, reaction, username }) => {
+            try {
+                const msg = await Message.findByPk(messageId);
+                if (!msg) return;
+
+                const reactions = msg.reactions || {};
+                const users = reactions[reaction] || [];
+
+                const userIndex = users.indexOf(username);
+                if (userIndex > -1) {
+                    // Toggle off
+                    users.splice(userIndex, 1);
+                } else {
+                    // Toggle on
+                    users.push(username);
+                }
+
+                if (users.length === 0) {
+                    delete reactions[reaction];
+                } else {
+                    reactions[reaction] = users;
+                }
+
+                await Message.update({ reactions }, { where: { id: messageId } });
+
+                io.to(roomId).emit("chat-reaction", { messageId, reactions });
+            } catch (e) {
+                console.error("Reaction failed:", e);
+            }
         });
 
         socket.on("floating-emoji", ({ roomId, emoji }) => {

@@ -53,12 +53,6 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
 
-    const sendFloatingEmoji = (emoji) => {
-        if (socket) {
-            socket.emit("floating-emoji", { roomId, emoji });
-        }
-    };
-
     return (
         <div style={{
             padding: "15px",
@@ -96,10 +90,13 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                     </div>
                 ) : (
                     messages.map((msg, i) => (
-                        <div key={i} style={{ wordWrap: "break-word", lineHeight: "1.4" }}>
-                            <strong style={{ color: "#7a35f0", fontSize: "13px" }}>{msg.username}</strong>
-                            <div style={{ color: "#eee", fontSize: "14px", marginTop: "2px" }}>{msg.message}</div>
-                        </div>
+                        <MessageItem
+                            key={msg.id || i}
+                            msg={msg}
+                            socket={socket}
+                            roomId={roomId}
+                            username={username}
+                        />
                     ))
                 )}
                 {typingUsers.size > 0 && (
@@ -109,78 +106,169 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
                 )}
             </div>
 
-            {/* Integrated Chat Bar (Emojis + Input) */}
+            {/* Chat Input Bar */}
             <div style={{
                 marginTop: "15px",
                 background: "#1a1a1a",
                 borderRadius: "12px",
                 border: "1px solid #333",
                 display: "flex",
-                flexDirection: "column",
                 overflow: "hidden"
             }}>
-                {/* 3D Emoji Selector - Top row of the input bar */}
+                <input
+                    type="text"
+                    placeholder="Message..."
+                    value={chatInput}
+                    onChange={handleInput}
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    style={{
+                        flex: 1,
+                        padding: "12px",
+                        boxSizing: "border-box",
+                        border: "none",
+                        background: "transparent",
+                        color: "white",
+                        outline: "none",
+                        fontSize: "14px"
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
+
+function MessageItem({ msg, socket, roomId, username }) {
+    const [showPicker, setShowPicker] = React.useState(false);
+    const [isHovered, setIsHovered] = React.useState(false);
+
+    const handleReact = (emoji) => {
+        socket.emit("chat-reaction", { roomId, messageId: msg.id, reaction: emoji, username });
+        setShowPicker(false);
+    };
+
+    const reactionList = Object.entries(msg.reactions || {});
+
+    const emojis = [
+        { char: "🎉", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Party%20popper/3D/party_popper_3d.png" },
+        { char: "❤️", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Red%20heart/3D/red_heart_3d.png" },
+        { char: "😂", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Face%20with%20tears%20of%20joy/3D/face_with_tears_of_joy_3d.png" },
+        { char: "🔥", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Fire/3D/fire_3d.png" },
+        { char: "👍", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Thumbs%20up/Default/3D/thumbs_up_3d.png" },
+        { char: "😳", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Flushed%20face/3D/flushed_face_3d.png" }
+    ];
+
+    return (
+        <div
+            style={{ position: "relative", marginBottom: "5px" }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => { setIsHovered(false); setShowPicker(false); }}
+        >
+            <div style={{ wordWrap: "break-word", lineHeight: "1.4", padding: "4px 8px", borderRadius: "8px", transition: "background 0.2s", background: isHovered ? "rgba(255,255,255,0.03)" : "transparent" }}>
+                <strong style={{ color: "#7a35f0", fontSize: "12px", opacity: 0.8 }}>{msg.username}</strong>
+                <div style={{ color: "#eee", fontSize: "14px", marginTop: "1px" }}>{msg.message}</div>
+
+                {/* Reaction Badges */}
+                {reactionList.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                        {reactionList.map(([emoji, users]) => {
+                            const emojiData = emojis.find(e => e.char === emoji);
+                            const hasReacted = users.includes(username);
+                            return (
+                                <div
+                                    key={emoji}
+                                    onClick={() => handleReact(emoji)}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        background: hasReacted ? "rgba(122, 53, 240, 0.2)" : "#1a1a1a",
+                                        border: `1px solid ${hasReacted ? "#7a35f0" : "#333"}`,
+                                        padding: "2px 6px",
+                                        borderRadius: "12px",
+                                        fontSize: "11px",
+                                        cursor: "pointer",
+                                        transition: "all 0.2s"
+                                    }}
+                                >
+                                    {emojiData ? (
+                                        <img src={emojiData.url} alt={emoji} style={{ width: "14px", height: "14px" }} />
+                                    ) : emoji}
+                                    <span style={{ opacity: 0.8 }}>{users.length}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Floating Reaction Button (🙂) */}
+            {isHovered && !showPicker && (
+                <button
+                    onClick={() => setShowPicker(true)}
+                    style={{
+                        position: "absolute",
+                        right: "0",
+                        top: "0",
+                        background: "#222",
+                        border: "1px solid #444",
+                        color: "#aaa",
+                        borderRadius: "50%",
+                        width: "24px",
+                        height: "24px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        boxShadow: "0 2px 5px rgba(0,0,0,0.5)"
+                    }}
+                >
+                    🙂
+                </button>
+            )}
+
+            {/* Mini Picker Row */}
+            {showPicker && (
                 <div style={{
+                    position: "absolute",
+                    right: "0",
+                    top: "-35px",
+                    background: "#1a1a1a",
+                    border: "1px solid #333",
+                    padding: "5px 8px",
+                    borderRadius: "20px",
                     display: "flex",
-                    gap: "10px",
-                    padding: "8px 12px",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    borderBottom: "1px solid #222",
-                    justifyContent: "flex-start"
+                    gap: "8px",
+                    zIndex: 10,
+                    boxShadow: "0 4px 15px rgba(0,0,0,0.6)",
+                    animation: "pickerIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
                 }}>
-                    {[
-                        { char: "🎉", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Party%20popper/3D/party_popper_3d.png" },
-                        { char: "❤️", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Red%20heart/3D/red_heart_3d.png" },
-                        { char: "😂", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Face%20with%20tears%20of%20joy/3D/face_with_tears_of_joy_3d.png" },
-                        { char: "🔥", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Fire/3D/fire_3d.png" },
-                        { char: "👍", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Thumbs%20up/Default/3D/thumbs_up_3d.png" },
-                        { char: "😳", url: "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Flushed%20face/3D/flushed_face_3d.png" }
-                    ].map(emoji => (
+                    <style>{`
+                        @keyframes pickerIn {
+                            from { opacity: 0; transform: translateY(10px) scale(0.8); }
+                            to { opacity: 1; transform: translateY(0) scale(1); }
+                        }
+                    `}</style>
+                    {emojis.map(emoji => (
                         <button
                             key={emoji.char}
-                            onClick={() => sendFloatingEmoji(emoji.char)}
+                            onClick={() => handleReact(emoji.char)}
                             style={{
                                 background: "transparent",
                                 border: "none",
                                 cursor: "pointer",
-                                padding: "4px",
-                                transition: "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                                width: "24px",
-                                height: "24px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center"
+                                width: "22px",
+                                height: "22px",
+                                transition: "transform 0.2s"
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.4) translateY(-2px)"}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1) translateY(0)"}
-                            onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.4)"}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
                         >
                             <img src={emoji.url} alt={emoji.char} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         </button>
                     ))}
                 </div>
-
-                {/* Text Input Row */}
-                <div style={{ display: "flex", width: "100%" }}>
-                    <input
-                        type="text"
-                        placeholder="Message..."
-                        value={chatInput}
-                        onChange={handleInput}
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        style={{
-                            flex: 1,
-                            padding: "12px",
-                            boxSizing: "border-box",
-                            border: "none",
-                            background: "transparent",
-                            color: "white",
-                            outline: "none",
-                            fontSize: "14px"
-                        }}
-                    />
-                </div>
-            </div>
+            )}
         </div>
     );
 }
