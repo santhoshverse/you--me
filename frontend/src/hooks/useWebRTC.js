@@ -47,23 +47,55 @@ export default function useWebRTC() {
     startCamera();
   }, []);
 
-  async function replaceTrackInPeers(newTrack) {
-    if (!newTrack) return;
+  async function replaceTrackInPeers(newTrack, kindHint) {
     Object.values(peerConnections.current).forEach(pc => {
-      const sender = pc.getSenders().find(s => s.track && s.track.kind === newTrack.kind);
-      if (sender) {
+      const kind = newTrack?.kind || kindHint;
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === kind);
+      if (sender && newTrack) {
         sender.replaceTrack(newTrack);
+      } else if (newTrack) {
+        // If no sender for this kind (e.g. joined while off), add it
+        pc.addTrack(newTrack, localStream);
+      } else if (sender && !newTrack) {
+        // If we want to explicitly stop sending a track
+        sender.replaceTrack(null);
       }
     });
   }
 
   async function toggleMic(roomId) {
-    if (!localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    const newEnabled = !micEnabled;
+    let newEnabled = !micEnabled;
+    let audioTrack = localStream?.getAudioTracks()[0];
 
-    if (audioTrack) {
-      audioTrack.enabled = newEnabled;
+    if (!newEnabled) {
+      // STOP: Release mic hardware
+      if (audioTrack) {
+        audioTrack.stop();
+        audioTrack.enabled = false; // Just in case
+      }
+      replaceTrackInPeers(null, "audio");
+    } else {
+      // START: Request new mic track
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const newTrack = stream.getAudioTracks()[0];
+
+        // Add to existing localStream
+        if (localStream) {
+          if (audioTrack) localStream.removeTrack(audioTrack);
+          localStream.addTrack(newTrack);
+          // Update reference to trigger React updates
+          setLocalStream(new MediaStream(localStream.getTracks()));
+        } else {
+          setLocalStream(stream);
+        }
+
+        audioTrack = newTrack;
+        replaceTrackInPeers(newTrack);
+      } catch (err) {
+        console.error("Failed to re-enable mic:", err);
+        newEnabled = false;
+      }
     }
 
     setMicEnabled(newEnabled);
@@ -75,12 +107,38 @@ export default function useWebRTC() {
   }
 
   async function toggleCam(roomId) {
-    if (!localStream) return;
-    const videoTrack = localStream.getVideoTracks()[0];
-    const newEnabled = !camEnabled;
+    let newEnabled = !camEnabled;
+    let videoTrack = localStream?.getVideoTracks()[0];
 
-    if (videoTrack) {
-      videoTrack.enabled = newEnabled;
+    if (!newEnabled) {
+      // STOP: Release camera hardware
+      if (videoTrack) {
+        videoTrack.stop();
+        videoTrack.enabled = false;
+      }
+      replaceTrackInPeers(null, "video");
+    } else {
+      // START: Request new camera track
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newTrack = stream.getVideoTracks()[0];
+
+        // Add to existing localStream
+        if (localStream) {
+          if (videoTrack) localStream.removeTrack(videoTrack);
+          localStream.addTrack(newTrack);
+          // Update reference to trigger React updates
+          setLocalStream(new MediaStream(localStream.getTracks()));
+        } else {
+          setLocalStream(stream);
+        }
+
+        videoTrack = newTrack;
+        replaceTrackInPeers(newTrack);
+      } catch (err) {
+        console.error("Failed to re-enable cam:", err);
+        newEnabled = false;
+      }
     }
 
     setCamEnabled(newEnabled);
