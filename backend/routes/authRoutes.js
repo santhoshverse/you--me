@@ -7,21 +7,30 @@ const router = express.Router();
 // Signup
 router.post("/signup", async (req, res) => {
     try {
+        console.log("📥 Signup attempt:", req.body);
         const { username, password, confirmPassword, display_name, email } = req.body;
 
         // Validation
         if (!username || !password || !confirmPassword || !email) {
-            return res.status(400).json({ error: "All fields are required" });
+            console.warn("⚠️ Signup failed: Missing fields");
+            return res.status(400).json({ error: "Missing required fields: username, password, or email" });
         }
         if (password !== confirmPassword) {
+            console.warn("⚠️ Signup failed: Passwords do not match");
             return res.status(400).json({ error: "Passwords do not match" });
         }
 
         const existingUsername = await User.findOne({ where: { username } });
-        if (existingUsername) return res.status(400).json({ error: "Username already taken" });
+        if (existingUsername) {
+            console.warn(`⚠️ Signup failed: Username ${username} already taken`);
+            return res.status(400).json({ error: "Username already taken" });
+        }
 
         const existingEmail = await User.findOne({ where: { email } });
-        if (existingEmail) return res.status(400).json({ error: "Email already registered" });
+        if (existingEmail) {
+            console.warn(`⚠️ Signup failed: Email ${email} already registered`);
+            return res.status(400).json({ error: "Email already registered" });
+        }
 
         const user = await User.create({
             username,
@@ -30,10 +39,11 @@ router.post("/signup", async (req, res) => {
             email
         });
 
+        console.log(`✅ User created: ${user.username}`);
         res.json({ userId: user.id, username: user.username, name: user.display_name });
     } catch (e) {
-        console.error("Signup error:", e);
-        res.status(500).json({ error: e.message || "Internal server error" });
+        console.error("❌ Signup crash:", e);
+        res.status(500).json({ error: `Server error: ${e.message}` });
     }
 });
 
