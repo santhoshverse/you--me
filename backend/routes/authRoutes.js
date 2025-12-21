@@ -7,21 +7,30 @@ const router = express.Router();
 // Signup
 router.post("/signup", async (req, res) => {
     try {
-        console.log("📥 Signup attempt:", req.body);
-        const { username, password, confirmPassword, display_name, email } = req.body;
+        console.log("-----------------------------------------");
+        console.log("📥 RECEIVED SIGNUP REQUEST");
+        console.log("Headers:", JSON.stringify(req.headers, null, 2));
+        console.log("Body:", JSON.stringify(req.body, null, 2));
+        console.log("-----------------------------------------");
 
-        // Validation
-        const actualDisplayName = display_name || req.body.name || username;
+        const { username, name, password, confirmPassword, display_name, email } = req.body;
 
-        if (!username || !password || !confirmPassword || !email) {
+        // Robust field mapping
+        const actualUsername = username || name;
+        const actualDisplayName = display_name || name || username || "User";
+
+        if (!actualUsername || !password || !confirmPassword || !email) {
             const missing = [];
-            if (!username) missing.push("username");
+            if (!actualUsername) missing.push("username/name");
             if (!password) missing.push("password");
             if (!confirmPassword) missing.push("confirmPassword");
             if (!email) missing.push("email");
 
             console.warn(`⚠️ Signup failed: Missing fields [${missing.join(", ")}]`);
-            return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
+            return res.status(400).json({
+                error: `Missing required fields: ${missing.join(", ")}`,
+                received: req.body
+            });
         }
         if (password !== confirmPassword) {
             console.warn("⚠️ Signup failed: Passwords do not match");
@@ -41,7 +50,7 @@ router.post("/signup", async (req, res) => {
         }
 
         const user = await User.create({
-            username,
+            username: actualUsername,
             password_hash: password, // TODO: bcrypt
             display_name: actualDisplayName,
             email

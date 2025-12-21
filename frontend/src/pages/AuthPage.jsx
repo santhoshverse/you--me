@@ -79,7 +79,7 @@ export default function AuthPage() {
                     type="text"
                     placeholder="Username"
                     value={form.username}
-                    onChange={e => setForm({ ...form, username: e.target.value })}
+                    onChange={e => setForm({ ...form, username: e.target.value, name: e.target.value })}
                     style={inputStyle}
                     required
                 />
