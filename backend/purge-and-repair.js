@@ -1,4 +1,4 @@
-import { sequelize } from "./db.js";
+import { sequelize, User } from "./models/index.js";
 
 async function purgeIndexesAndRepair() {
     try {
