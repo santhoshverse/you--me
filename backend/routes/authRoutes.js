@@ -16,11 +16,10 @@ router.post("/social", async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
-        const { provider, providerUserId, email, name, avatarUrl } = req.body;
-
-        if (!provider || !providerUserId || !name) {
-            return res.status(400).json({ error: "Missing required social auth fields" });
-        }
+        // Derive base name from email if name is sparse or for username uniqueness
+        const emailPrefix = email ? email.split("@")[0] : "user";
+        const randomSuffix = Math.floor(Math.random() * 90 + 10); // 2-digit number (10-99)
+        const finalDisplayName = name || (emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1));
 
         // 1. Find or Create User
         let [user, created] = await User.findOrCreate({
@@ -28,9 +27,9 @@ router.post("/social", async (req, res) => {
             defaults: {
                 auth_provider: provider,
                 email: email,
-                display_name: name,
+                display_name: finalDisplayName,
                 avatar_url: avatarUrl,
-                username: generateRandomName() // Assign creative random username
+                username: `${emailPrefix.toLowerCase().replace(/[^a-z0-9]/g, "")}${randomSuffix}`
             }
         });
 

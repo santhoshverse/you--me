@@ -37,12 +37,16 @@ export default function AuthPage() {
         setError("");
 
         // Simulated user data from Google/Apple
+        const randomNum = Math.floor(Math.random() * 90 + 10);
+        const demoEmail = `gamer${randomNum}@example.com`;
+        const emailPrefix = demoEmail.split("@")[0];
+
         const simulatedUser = {
             provider,
             providerUserId: `social_${Math.random().toString(36).substr(2, 9)}`,
-            email: `user_${provider}@example.com`,
-            name: `${generateRandomName()}`,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}`
+            email: demoEmail,
+            name: emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1),
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}${randomNum}`
         };
 
         try {
