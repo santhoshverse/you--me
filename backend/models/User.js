@@ -26,6 +26,14 @@ const User = sequelize.define("User", {
         type: DataTypes.STRING,
         allowNull: false
     },
+    password_hash: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    role: {
+        type: DataTypes.STRING,
+        defaultValue: "user" // 'user', 'admin'
+    },
     avatar_url: DataTypes.STRING,
     createdAt: { type: DataTypes.DATE, allowNull: true, field: 'created_at' },
     updatedAt: { type: DataTypes.DATE, allowNull: true, field: 'updated_at' }

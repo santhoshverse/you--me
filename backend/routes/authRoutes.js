@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import bcrypt from "bcryptjs";
 import { User } from "../models/index.js";
 import { generateRandomName } from "../utils/randomName.js";
 
@@ -127,8 +128,96 @@ router.get("/me", async (req, res) => {
     }
 });
 
-// Legacy routes removed to stop 400/401 loops
-router.post("/signup", (req, res) => res.status(501).json({ error: "Manual signup disabled. Use Social Login." }));
-router.post("/login", (req, res) => res.status(501).json({ error: "Manual login disabled. Use Social Login." }));
+// --- 1. Registration (Traditional) ---
+router.post("/signup", async (req, res) => {
+    try {
+        const { username, email, password, display_name } = req.body;
+
+        if (!email || !password || !username) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Check if user exists
+        const existing = await User.findOne({ where: { email } });
+        if (existing) return res.status(400).json({ error: "Email already registered" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            username,
+            email,
+            password_hash: hashedPassword,
+            display_name: display_name || username,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+        });
+
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+        res.status(201).json({ token, userId: user.id, name: user.display_name, username: user.username });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- 2. Login (Traditional) ---
+router.post("/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ where: { email } });
+
+        if (!user || !user.password_hash) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        const valid = await bcrypt.compare(password, user.password_hash);
+        if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+        res.json({ token, userId: user.id, name: user.display_name, username: user.username });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- 3. Demo Login ---
+router.post("/demo-login", async (req, res) => {
+    try {
+        const demoUser = await User.findOne({ where: { username: "demo_user" } });
+        let user = demoUser;
+
+        if (!user) {
+            user = await User.create({
+                username: "demo_user",
+                email: "demo@example.com",
+                display_name: "Demo Explorers",
+                avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=demo"
+            });
+        }
+
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+        res.json({ token, userId: user.id, name: user.display_name, username: user.username });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- 4. Admin Login ---
+router.post("/admin-login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ where: { email, role: 'admin' } });
+
+        if (!user || !user.password_hash) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const valid = await bcrypt.compare(password, user.password_hash);
+        if (!valid) return res.status(403).json({ error: "Access denied" });
+
+        const token = jwt.sign({ userId: user.id, role: 'admin' }, JWT_SECRET, { expiresIn: "1d" });
+        res.json({ token, userId: user.id, name: user.display_name, username: user.username });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 export default router;
