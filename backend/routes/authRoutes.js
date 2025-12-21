@@ -31,9 +31,9 @@ router.post("/signup", async (req, res) => {
         }
 
         // Check if username already exists
-        const existingUsername = await User.findOne({ where: { username: username } });
+        const existingUsername = await User.findOne({ where: { username: actualUsername } });
         if (existingUsername) {
-            console.warn(`⚠️ Signup failed: Username ${username} already taken`);
+            console.warn(`⚠️ Signup failed: Username ${actualUsername} already taken`);
             return res.status(400).json({ error: "Username already taken" });
         }
 
@@ -45,10 +45,10 @@ router.post("/signup", async (req, res) => {
         }
 
         const user = await User.create({
-            username,
+            username: actualUsername,
             email,
             password_hash: password, // TODO: bcrypt
-            display_name: username
+            display_name: actualUsername
         });
 
         console.log(`✅ User created: ${user.username}`);

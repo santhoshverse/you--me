@@ -44,6 +44,7 @@ export default function AuthPage() {
                 if (data.username) localStorage.setItem("username", data.username);
                 navigate(from, { replace: true });
             } else {
+                console.error("❌ Auth Error Response:", data);
                 setError(data.error || "Something went wrong");
             }
         } catch (err) {
