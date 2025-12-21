@@ -60,6 +60,10 @@ router.post("/signup", async (req, res) => {
         res.json({ userId: user.id, username: user.username, name: user.display_name });
     } catch (e) {
         console.error("❌ Signup crash:", e);
+        if (e.name === 'SequelizeUniqueConstraintError') {
+            const field = e.errors[0]?.path || "field";
+            return res.status(400).json({ error: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists` });
+        }
         res.status(500).json({ error: `Server error: ${e.message}` });
     }
 });
@@ -67,12 +71,28 @@ router.post("/signup", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
     try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ where: { username, password_hash: password } });
-        if (!user) return res.status(401).json({ error: "Invalid credentials" });
+        console.log("-----------------------------------------");
+        console.log("📥 RECEIVED LOGIN REQUEST");
+        console.log("Body:", JSON.stringify(req.body, null, 2));
+        console.log("-----------------------------------------");
 
+        const { username, name, password } = req.body;
+        const actualUsername = username || name;
+
+        if (!actualUsername || !password) {
+            return res.status(400).json({ error: "Missing username/name or password" });
+        }
+
+        const user = await User.findOne({ where: { username: actualUsername, password_hash: password } });
+        if (!user) {
+            console.warn(`⚠️ Invalid credentials for: ${actualUsername}`);
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        console.log(`✅ User logged in: ${user.username}`);
         res.json({ userId: user.id, username: user.username, name: user.display_name });
     } catch (e) {
+        console.error("❌ Login crash:", e);
         res.status(500).json({ error: e.message });
     }
 });
