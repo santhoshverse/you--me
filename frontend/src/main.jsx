@@ -9,15 +9,20 @@ import RoomPage from "./pages/RoomPage.jsx";
 import "./styles.css";
 import AuthPage from "./pages/AuthPage.jsx";
 import PublicRoomsPage from "./pages/PublicRoomsPage.jsx";
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_ID_HERE";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-    <BrowserRouter>
-        <Routes>
-            <Route path="/" element={<AuthPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/create" element={<CreateRoomPage />} />
-            <Route path="/rooms" element={<PublicRoomsPage />} />
-            <Route path="/room/:roomId" element={<RoomPage />} />
-        </Routes>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<AuthPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/create" element={<CreateRoomPage />} />
+                <Route path="/rooms" element={<PublicRoomsPage />} />
+                <Route path="/room/:roomId" element={<RoomPage />} />
+            </Routes>
+        </BrowserRouter>
+    </GoogleOAuthProvider>
 );
