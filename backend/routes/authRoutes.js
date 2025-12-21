@@ -76,16 +76,15 @@ router.post("/login", async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
-        const { username, name, password } = req.body;
-        const actualUsername = username || name;
+        const { username, password } = req.body;
 
-        if (!actualUsername || !password) {
-            return res.status(400).json({ error: "Missing name or password" });
+        if (!username || !password) {
+            return res.status(400).json({ error: "Missing username or password" });
         }
 
-        const user = await User.findOne({ where: { username: actualUsername, password_hash: password } });
+        const user = await User.findOne({ where: { username: username, password_hash: password } });
         if (!user) {
-            console.warn(`⚠️ Invalid credentials for: ${actualUsername}`);
+            console.warn(`⚠️ Invalid credentials for: ${username}`);
             return res.status(401).json({ error: "Invalid credentials" });
         }
 

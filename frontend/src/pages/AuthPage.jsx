@@ -6,7 +6,7 @@ export default function AuthPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const [mode, setMode] = useState("choice"); // choice, login, signup
-    const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", name: "", email: "" });
+    const [form, setForm] = useState({ username: "", email: "", password: "", confirmPassword: "" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -25,11 +25,16 @@ export default function AuthPage() {
         setLoading(true);
         const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
 
+        // Strict Payload
+        const payload = mode === "login"
+            ? { username: form.username, password: form.password }
+            : { username: form.username, email: form.email, password: form.password, confirmPassword: form.confirmPassword };
+
         try {
             const res = await fetch(`${BACKEND_URL}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(form)
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
@@ -79,7 +84,7 @@ export default function AuthPage() {
                     type="text"
                     placeholder="Username"
                     value={form.username}
-                    onChange={e => setForm({ ...form, username: e.target.value, name: e.target.value })}
+                    onChange={e => setForm({ ...form, username: e.target.value })}
                     style={inputStyle}
                     required
                 />
