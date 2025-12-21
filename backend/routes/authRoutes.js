@@ -60,7 +60,11 @@ router.post("/social", async (req, res) => {
 
     } catch (e) {
         console.error("❌ Social Auth Error:", e);
-        res.status(500).json({ error: `Server error: ${e.message}` });
+        res.status(500).json({
+            error: `Server error: ${e.message}`,
+            details: e.name,
+            stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+        });
     }
 });
 
