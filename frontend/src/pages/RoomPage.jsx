@@ -298,16 +298,24 @@ export default function RoomPage() {
     const navigate = useNavigate();
 
     const [name, setName] = useState(localStorage.getItem("name") || "");
-    const userId = localStorage.getItem("userId");
+    const [userId, setUserId] = useState(localStorage.getItem("userId") || "");
 
     useEffect(() => {
-        if (!userId || !name) {
-            navigate("/auth", { state: { from: location } });
+        if (!name || !userId) {
+            const guestName = generateRandomName();
+            const guestId = `guest_${Math.random().toString(36).substr(2, 9)}`;
+
+            localStorage.setItem("name", guestName);
+            localStorage.setItem("userId", guestId);
+
+            setName(guestName);
+            setUserId(guestId);
+            console.log(`👤 Assigned Guest Identity: ${guestName}`);
         }
-    }, [userId, name, navigate]);
+    }, [name, userId]);
 
     if (!userId || !name) {
-        return <div style={{ background: "#0a0a0a", height: "100vh", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>Checking identity...</div>;
+        return <div style={{ background: "#0a0a0a", height: "100vh", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>Setting up guest session...</div>;
     }
 
     return <RoomContent roomId={roomId} username={name} />;
