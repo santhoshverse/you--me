@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { generateRandomName } from "../utils/randomName";
 
 export default function AuthPage() {
     const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function AuthPage() {
             provider,
             providerUserId: `social_${Math.random().toString(36).substr(2, 9)}`,
             email: `user_${provider}@example.com`,
-            name: `Social User (${provider})`,
+            name: `${generateRandomName()}`,
             avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}`
         };
 

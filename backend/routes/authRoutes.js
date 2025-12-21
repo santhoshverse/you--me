@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
+import { generateRandomName } from "../utils/randomName.js";
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.post("/social", async (req, res) => {
                 email: email,
                 display_name: name,
                 avatar_url: avatarUrl,
-                username: `user_${providerUserId.substring(0, 8)}` // Auto-generated username
+                username: generateRandomName() // Assign creative random username
             }
         });
 
