@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { socket } from "../socket";
 import { v4 as uuid } from "uuid";
@@ -296,7 +295,7 @@ export default function useWebRTC() {
         if (state.media !== undefined) setMedia(state.media);
         if (state.playback !== undefined) setPlayback(state.playback);
       }
-      // ... existing members logic ...
+
       if (members) {
         setPeers(prev => {
           const next = { ...prev };
@@ -327,169 +326,141 @@ export default function useWebRTC() {
       }
     });
 
-    // ... existing peer/offer/answer/ice logic ...
+    socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
+      console.log("🔔 NEW PEER CONNECTED:", remoteId, "(", remoteName, ")");
 
-    // ... Copying existing logic for brevity, ensuring it is preserved ...
-    // Note: I will replace the logic block to ensure full coverage of the file or use focused replacement if possible.
-    // The instructions say "Replace content to add `media` and `playback` state...".
-    // I must include all the socket.on handlers for new-peer, offer, answer, ice-candidate, etc.
-    // But since I can't see lines 299 onwards in the `ReplacementContent` argument without pasting them all,
-    // I will try to target specific blocks if possible, or just paste the whole `initSocketJoin`.
-    // Let's paste the relevant `socket.on` handlers and keep the existing ones.
+      setPeers(prev => ({
+        ...prev,
+        [remoteId]: { ...prev[remoteId], username: remoteName }
+      }));
 
-    // Actually, I can use a simpler replacement if I just target the updated functions.
-    // Wait, the `initSocketJoin` is quite long.
-    // Let's do a multi-replace or just replace the `room-state` handler and the return statement.
+      const pc = createPeerConnection(remoteId);
 
-    // I will use `replace_file_content` for `stopScreenShare` and `initSocketJoin` updates, 
-    // and `startScreenShare` updates.
+      if (localStream) {
+        localStream.getTracks().forEach(track =>
+          pc.addTrack(track, localStream)
+        );
+      }
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      console.log("📤 SENDING OFFER TO:", remoteId);
+      socket.emit("offer", {
+        toPeerId: remoteId,
+        fromPeerId: peerId.current,
+        sdp: offer
+      });
+    });
+
+    socket.on("offer", async ({ fromPeerId: remoteId, sdp }) => {
+      console.log("📩 OFFER RECEIVED FROM:", remoteId);
+      const pc = createPeerConnection(remoteId);
+
+      if (localStream) {
+        localStream.getTracks().forEach(track =>
+          pc.addTrack(track, localStream)
+        );
+      }
+
+      await pc.setRemoteDescription(sdp);
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      console.log("📤 SENDING ANSWER TO:", remoteId);
+      socket.emit("answer", {
+        toPeerId: remoteId,
+        fromPeerId: peerId.current,
+        sdp: answer
+      });
+    });
+
+    socket.on("answer", async ({ fromPeerId: remoteId, sdp }) => {
+      console.log("📩 ANSWER RECEIVED FROM:", remoteId);
+      const pc = peerConnections.current[remoteId];
+      if (!pc) return;
+      await pc.setRemoteDescription(sdp);
+    });
+
+    socket.on("ice-candidate", async ({ fromPeerId, candidate }) => {
+      const pc = peerConnections.current[fromPeerId];
+      if (!pc) return;
+      await pc.addIceCandidate(candidate);
+    });
+
+    socket.on("screen-started", ({ peerId }) => {
+      console.log("Screen started by:", peerId);
+    });
+
+    socket.on("screen-stopped", () => {
+      console.log("Screen stopped");
+    });
+
+    socket.on("mic-toggled", ({ peerId, micEnabled }) => {
+      setPeers(prev => ({
+        ...prev,
+        [peerId]: {
+          ...prev[peerId],
+          micEnabled
+        }
+      }));
+    });
+
+    socket.on("cam-toggled", ({ peerId, camEnabled }) => {
+      setPeers(prev => ({
+        ...prev,
+        [peerId]: {
+          ...prev[peerId],
+          camEnabled
+        }
+      }));
+    });
   }
-  // ... this tool call is getting complicated. I should break it down.
-  // I'll execute the replacement for `stopScreenShare`... NO wait `startScreenShare` first.
 
-  // Let's REPLACE `startScreenShare` (lines 183-205)
-  // REPLACE `stopScreenShare` (lines 207-216)
-  // REPLACE `return` (lines 416-433)
-  // AND `initSocketJoin` `room-state` handler.
+  function leaveRoom(roomId) {
+    console.log("🚪 LEAVING ROOM:", roomId);
 
-  // I will use `multi_replace_file_content`.
-
-
-  socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
-    console.log("🔔 NEW PEER CONNECTED:", remoteId, "(", remoteName, ")");
-
-    setPeers(prev => ({
-      ...prev,
-      [remoteId]: { ...prev[remoteId], username: remoteName }
-    }));
-
-    const pc = createPeerConnection(remoteId);
-
+    // 1. Stop all local tracks
     if (localStream) {
-      localStream.getTracks().forEach(track =>
-        pc.addTrack(track, localStream)
-      );
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
     }
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+    // 2. Close all PeerConnections
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
 
-    console.log("📤 SENDING OFFER TO:", remoteId);
-    socket.emit("offer", {
-      toPeerId: remoteId,
-      fromPeerId: peerId.current,
-      sdp: offer
-    });
-  });
+    // 3. Notify Backend
+    socket.emit("leave-room", { roomId, peerId: peerId.current });
 
-  socket.on("offer", async ({ fromPeerId: remoteId, sdp }) => {
-    console.log("📩 OFFER RECEIVED FROM:", remoteId);
-    const pc = createPeerConnection(remoteId);
-
-    if (localStream) {
-      localStream.getTracks().forEach(track =>
-        pc.addTrack(track, localStream)
-      );
-    }
-
-    await pc.setRemoteDescription(sdp);
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    console.log("📤 SENDING ANSWER TO:", remoteId);
-    socket.emit("answer", {
-      toPeerId: remoteId,
-      fromPeerId: peerId.current,
-      sdp: answer
-    });
-  });
-
-  socket.on("answer", async ({ fromPeerId: remoteId, sdp }) => {
-    console.log("📩 ANSWER RECEIVED FROM:", remoteId);
-    const pc = peerConnections.current[remoteId];
-    if (!pc) return;
-    await pc.setRemoteDescription(sdp);
-  });
-
-  socket.on("ice-candidate", async ({ fromPeerId, candidate }) => {
-    const pc = peerConnections.current[fromPeerId];
-    if (!pc) return;
-    await pc.addIceCandidate(candidate);
-  });
-
-  socket.on("screen-started", ({ peerId }) => {
-    console.log("Screen started by:", peerId);
-  });
-
-  socket.on("screen-stopped", () => {
-    console.log("Screen stopped");
-  });
-
-  socket.on("mic-toggled", ({ peerId, micEnabled }) => {
-    setPeers(prev => ({
-      ...prev,
-      [peerId]: {
-        ...prev[peerId],
-        micEnabled
-      }
-    }));
-  });
-
-  socket.on("cam-toggled", ({ peerId, camEnabled }) => {
-    setPeers(prev => ({
-      ...prev,
-      [peerId]: {
-        ...prev[peerId],
-        camEnabled
-      }
-    }));
-  });
-}
-
-function leaveRoom(roomId) {
-  console.log("🚪 LEAVING ROOM:", roomId);
-
-  // 1. Stop all local tracks
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-  }
-  if (screenStream) {
-    screenStream.getTracks().forEach(track => track.stop());
+    // 4. Reset state
+    setPeers({});
+    setLocalStream(null);
+    setScreenStream(null);
+    setIsSharing(false);
   }
 
-  // 2. Close all PeerConnections
-  Object.values(peerConnections.current).forEach(pc => pc.close());
-  peerConnections.current = {};
-
-  // 3. Notify Backend
-  socket.emit("leave-room", { roomId, peerId: peerId.current });
-
-  // 4. Reset state
-  setPeers({});
-  setLocalStream(null);
-  setScreenStream(null);
-  setIsSharing(false);
-}
-
-return {
-  localStream,
-  peers,
-  joinRoom,
-  leaveRoom,
-  startScreenShare,
-  stopScreenShare,
-  isSharing,
-  screenStream,
-  toggleMic,
-  toggleCam,
-  micEnabled,
-  camEnabled,
-  username,
-  isHost,
-  kickPeer,
-  muteAll,
-  media,
-  playback
-};
+  return {
+    localStream,
+    peers,
+    joinRoom,
+    leaveRoom,
+    startScreenShare,
+    stopScreenShare,
+    isSharing,
+    screenStream,
+    toggleMic,
+    toggleCam,
+    micEnabled,
+    camEnabled,
+    username,
+    isHost,
+    kickPeer,
+    muteAll,
+    media,
+    playback
+  };
 }
