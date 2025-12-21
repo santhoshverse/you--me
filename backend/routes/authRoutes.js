@@ -11,18 +11,22 @@ router.post("/signup", async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
-        const { username, email, password, confirmPassword } = req.body;
+        const { username, email, password, confirmPassword, name } = req.body;
+        const actualUsername = username || name;
 
-        // Strict Validation
-        if (!username || !email || !password || !confirmPassword) {
+        // Validation
+        if (!actualUsername || !email || !password || !confirmPassword) {
             const missing = [];
-            if (!username) missing.push("username");
+            if (!actualUsername) missing.push("username/name");
             if (!email) missing.push("email");
             if (!password) missing.push("password");
             if (!confirmPassword) missing.push("confirmPassword");
 
             console.warn(`⚠️ Signup failed: Missing fields [${missing.join(", ")}]`);
-            return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
+            return res.status(400).json({
+                error: `Missing required fields: ${missing.join(", ")}`,
+                received: req.body
+            });
         }
 
         if (password !== confirmPassword) {
