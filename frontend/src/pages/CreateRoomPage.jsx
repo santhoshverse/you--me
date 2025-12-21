@@ -36,8 +36,31 @@ export default function CreateRoomPage() {
         navigate(`/room/${roomIdInput.trim()}`);
     }
 
+    const [user, setUser] = useState({
+        name: localStorage.getItem("name") || "",
+        token: localStorage.getItem("token") || ""
+    });
+
+    const handleLogout = () => {
+        localStorage.clear();
+        setUser({ name: "", token: "" });
+        navigate("/");
+    };
+
     return (
         <div style={containerStyle}>
+            {/* Header / Top Nav */}
+            <div style={headerStyle}>
+                {user.token ? (
+                    <div style={userSection}>
+                        <span style={userNameText}>{user.name}</span>
+                        <button onClick={handleLogout} style={logoutBtn}>Logout</button>
+                    </div>
+                ) : (
+                    <button onClick={() => navigate("/auth")} style={loginBtn}>Login</button>
+                )}
+            </div>
+
             <div style={glassCard}>
                 <h1 style={titleStyle}>You & Me</h1>
                 <p style={subtitleStyle}>Watch together, anywhere.</p>
@@ -202,4 +225,50 @@ const inputStyle = {
     fontSize: "16px",
     outline: "none",
     textAlign: "center"
+};
+
+const headerStyle = {
+    position: "absolute",
+    top: "30px",
+    right: "40px",
+    zIndex: 100
+};
+
+const userSection = {
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    background: "rgba(255,255,255,0.05)",
+    padding: "8px 16px",
+    borderRadius: "12px",
+    border: "1px solid rgba(255,255,255,0.1)"
+};
+
+const userNameText = {
+    color: "#ddd",
+    fontSize: "14px",
+    fontWeight: "600"
+};
+
+const loginBtn = {
+    background: "rgba(122, 53, 240, 0.2)",
+    color: "white",
+    border: "1px solid #7a35f0",
+    padding: "10px 25px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "bold",
+    transition: "all 0.2s"
+};
+
+const logoutBtn = {
+    background: "transparent",
+    color: "#ff4757",
+    border: "none",
+    padding: "0",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "bold",
+    textDecoration: "underline"
 };
