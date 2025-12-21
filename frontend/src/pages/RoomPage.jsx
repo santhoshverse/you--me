@@ -30,10 +30,13 @@ function RoomContent({ roomId, username }) {
         micEnabled,
         camEnabled,
         isHost,
-        kickPeer
+        kickPeer,
+        media,
+        playback
     } = useWebRTC();
 
     const [localVideoUrl, setLocalVideoUrl] = useState(null);
+    const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
 
     const resetMediaModes = () => {
         setLocalVideoUrl(null);
@@ -61,6 +64,7 @@ function RoomContent({ roomId, username }) {
 
     function handleURL(url) {
         if (!url) return;
+        // Sync Mode: Clear local screen share if any, and set media
         resetMediaModes();
         socket.emit("set-media", {
             roomId,
@@ -70,18 +74,21 @@ function RoomContent({ roomId, username }) {
 
     const handleSelectMedia = (type, payload) => {
         if (type === "file" && payload) {
-            resetMediaModes();
+            // Screen Share Mode (Local File)
+            // 1. Clear Sync Media (so viewers don't see old YouTube)
+            socket.emit("set-media", { roomId, media: null });
+
+            // 2. Start Screen Share for others to see
+            if (!isSharing) startScreenShare(roomId);
+
+            // 3. Set local URL for Host to see/control
             const url = URL.createObjectURL(payload);
             setLocalVideoUrl(url);
-            setTimeout(() => {
-                socket.emit("set-media", {
-                    roomId,
-                    media: { type: "file", filename: payload.name }
-                });
-            }, 500);
+
         } else if (type === "screen") {
             if (isSharing) {
                 stopScreenShare(roomId);
+                socket.emit("set-media", { roomId, media: null }); // Clear state
             } else {
                 resetMediaModes();
                 socket.emit("set-media", { roomId, media: null });
@@ -100,8 +107,13 @@ function RoomContent({ roomId, username }) {
         const handleChat = (msg) => setMessages(prev => [...prev, msg]);
         const handleRoomState = ({ state, messages: history }) => {
             if (state?.media?.type && state.media.type !== "file") {
+                // If remote sync media is active, clear local file view
                 setLocalVideoUrl(null);
             }
+            if (state?.is_screen_sharing !== undefined) {
+                setIsRemoteScreenSharing(state.is_screen_sharing);
+            }
+
             if (history) {
                 const formattedHistory = history.map(m => ({
                     id: m.id,
@@ -240,6 +252,8 @@ function RoomContent({ roomId, username }) {
                         localVideoUrl={localVideoUrl}
                         setLocalVideoUrl={setLocalVideoUrl}
                         isHost={isHost}
+                        media={media}
+                        playback={playback}
                     />
 
                     {screenStream && (

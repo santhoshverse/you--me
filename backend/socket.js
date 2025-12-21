@@ -130,6 +130,12 @@ export function socketHandler(io) {
 
         // When host sets video
         socket.on("set-media", async ({ roomId, media }) => {
+            const hostId = roomHosts.get(roomId);
+            if (hostId !== socket.peerId) {
+                console.warn(`⚠️ Non-host ${socket.peerId} tried to set media`);
+                return;
+            }
+
             try {
                 // Reset playback state when media changes
                 await RoomState.update(
@@ -144,17 +150,28 @@ export function socketHandler(io) {
             } catch (e) { console.warn("Media update failed:", e); }
         });
 
-        // Host plays/pauses/seek
+        // Host plays/pauses/seek (Sync Mode)
         socket.on("player-action", async ({ roomId, action }) => {
+            const hostId = roomHosts.get(roomId);
+            if (hostId !== socket.peerId) {
+                return; // Ignored if not host
+            }
+
             action.updatedAt = Date.now();
 
             try {
+                // We should carefully update the JSON to avoid overwriting unrelated fields if any
+                // But for now, replacing the playback object is fine
                 await RoomState.update(
                     { playback: action },
                     { where: { room_id: roomId } }
                 );
             } catch (e) { }
 
+            // Broadcast to everyone (including sender if needed, but usually sender updates locally first)
+            // Using io.to(roomId) ensures consistency, but sender might double-apply if not careful. 
+            // Better to use socket.to(roomId) if sender is optimistic, but for sync, authoritative broadcast is safer.
+            // Let's stick to socket.to(roomId) as the host UI likely updates immediately.
             socket.to(roomId).emit("player-action", action);
         });
 

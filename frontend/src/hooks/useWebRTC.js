@@ -204,13 +204,34 @@ export default function useWebRTC() {
     }
   }
 
-  function stopScreenShare(roomId) {
+  async function stopScreenShare(roomId) {
     if (screenStream) {
       screenStream.getTracks().forEach(track => track.stop());
     }
 
     setScreenStream(null);
     setIsSharing(false);
+
+    // RESTORE CAMERA if it was enabled
+    // We do this by toggling cam off and on, or just adding the track back
+    // Toggling is safer as it handles socket events
+    if (camEnabled) {
+      // Force re-enable cam
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newTrack = stream.getVideoTracks()[0];
+
+        if (localStream) {
+          const oldTrack = localStream.getVideoTracks()[0];
+          if (oldTrack) localStream.removeTrack(oldTrack);
+          localStream.addTrack(newTrack);
+          setLocalStream(new MediaStream(localStream.getTracks()));
+        } else {
+          setLocalStream(stream);
+        }
+        replaceTrackInPeers(newTrack, "video");
+      } catch (e) { console.warn("Failed to restore cam", e); }
+    }
 
     socket.emit("screen-stopped", { roomId, peerId: peerId.current });
   }
@@ -237,6 +258,10 @@ export default function useWebRTC() {
     roomIdRef.current = roomId;
   }
 
+  // Media Sync State
+  const [media, setMedia] = useState(null);
+  const [playback, setPlayback] = useState({ isPlaying: false, time: 0 });
+
   // Actual join logic
   useEffect(() => {
     if (readyToJoin && roomIdRef.current) {
@@ -249,6 +274,7 @@ export default function useWebRTC() {
     console.log("🚀 JOINING ROOM:", roomId, "Stream Ready:", !!localStream);
 
     socket.emit("register", { peerId: peerId.current, username: username });
+    // IMPORTANT: Wait a bit or ensure register is handled? Usually socket.io handles order.
     socket.emit("join-room", { roomId, peerId: peerId.current, username: username });
 
     socket.on("host-update", ({ hostPeerId }) => {
@@ -265,7 +291,12 @@ export default function useWebRTC() {
       alert("The host muted everyone.");
     });
 
-    socket.on("room-state", ({ members }) => {
+    socket.on("room-state", ({ state, members, messages }) => {
+      if (state) {
+        if (state.media !== undefined) setMedia(state.media);
+        if (state.playback !== undefined) setPlayback(state.playback);
+      }
+      // ... existing members logic ...
       if (members) {
         setPeers(prev => {
           const next = { ...prev };
@@ -296,139 +327,169 @@ export default function useWebRTC() {
       }
     });
 
-    socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
-      console.log("🔔 NEW PEER CONNECTED:", remoteId, "(", remoteName, ")");
+    // ... existing peer/offer/answer/ice logic ...
 
-      setPeers(prev => ({
-        ...prev,
-        [remoteId]: { ...prev[remoteId], username: remoteName }
-      }));
+    // ... Copying existing logic for brevity, ensuring it is preserved ...
+    // Note: I will replace the logic block to ensure full coverage of the file or use focused replacement if possible.
+    // The instructions say "Replace content to add `media` and `playback` state...".
+    // I must include all the socket.on handlers for new-peer, offer, answer, ice-candidate, etc.
+    // But since I can't see lines 299 onwards in the `ReplacementContent` argument without pasting them all,
+    // I will try to target specific blocks if possible, or just paste the whole `initSocketJoin`.
+    // Let's paste the relevant `socket.on` handlers and keep the existing ones.
 
-      const pc = createPeerConnection(remoteId);
+    // Actually, I can use a simpler replacement if I just target the updated functions.
+    // Wait, the `initSocketJoin` is quite long.
+    // Let's do a multi-replace or just replace the `room-state` handler and the return statement.
 
-      if (localStream) {
-        localStream.getTracks().forEach(track =>
-          pc.addTrack(track, localStream)
-        );
-      }
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      console.log("📤 SENDING OFFER TO:", remoteId);
-      socket.emit("offer", {
-        toPeerId: remoteId,
-        fromPeerId: peerId.current,
-        sdp: offer
-      });
-    });
-
-    socket.on("offer", async ({ fromPeerId: remoteId, sdp }) => {
-      console.log("📩 OFFER RECEIVED FROM:", remoteId);
-      const pc = createPeerConnection(remoteId);
-
-      if (localStream) {
-        localStream.getTracks().forEach(track =>
-          pc.addTrack(track, localStream)
-        );
-      }
-
-      await pc.setRemoteDescription(sdp);
-
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      console.log("📤 SENDING ANSWER TO:", remoteId);
-      socket.emit("answer", {
-        toPeerId: remoteId,
-        fromPeerId: peerId.current,
-        sdp: answer
-      });
-    });
-
-    socket.on("answer", async ({ fromPeerId: remoteId, sdp }) => {
-      console.log("📩 ANSWER RECEIVED FROM:", remoteId);
-      const pc = peerConnections.current[remoteId];
-      if (!pc) return;
-      await pc.setRemoteDescription(sdp);
-    });
-
-    socket.on("ice-candidate", async ({ fromPeerId, candidate }) => {
-      const pc = peerConnections.current[fromPeerId];
-      if (!pc) return;
-      await pc.addIceCandidate(candidate);
-    });
-
-    socket.on("screen-started", ({ peerId }) => {
-      console.log("Screen started by:", peerId);
-    });
-
-    socket.on("screen-stopped", () => {
-      console.log("Screen stopped");
-    });
-
-    socket.on("mic-toggled", ({ peerId, micEnabled }) => {
-      setPeers(prev => ({
-        ...prev,
-        [peerId]: {
-          ...prev[peerId],
-          micEnabled
-        }
-      }));
-    });
-
-    socket.on("cam-toggled", ({ peerId, camEnabled }) => {
-      setPeers(prev => ({
-        ...prev,
-        [peerId]: {
-          ...prev[peerId],
-          camEnabled
-        }
-      }));
-    });
+    // I will use `replace_file_content` for `stopScreenShare` and `initSocketJoin` updates, 
+    // and `startScreenShare` updates.
   }
+  // ... this tool call is getting complicated. I should break it down.
+  // I'll execute the replacement for `stopScreenShare`... NO wait `startScreenShare` first.
 
-  function leaveRoom(roomId) {
-    console.log("🚪 LEAVING ROOM:", roomId);
+  // Let's REPLACE `startScreenShare` (lines 183-205)
+  // REPLACE `stopScreenShare` (lines 207-216)
+  // REPLACE `return` (lines 416-433)
+  // AND `initSocketJoin` `room-state` handler.
 
-    // 1. Stop all local tracks
+  // I will use `multi_replace_file_content`.
+
+
+  socket.on("new-peer", async ({ peerId: remoteId, username: remoteName }) => {
+    console.log("🔔 NEW PEER CONNECTED:", remoteId, "(", remoteName, ")");
+
+    setPeers(prev => ({
+      ...prev,
+      [remoteId]: { ...prev[remoteId], username: remoteName }
+    }));
+
+    const pc = createPeerConnection(remoteId);
+
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+      localStream.getTracks().forEach(track =>
+        pc.addTrack(track, localStream)
+      );
     }
-    if (screenStream) {
-      screenStream.getTracks().forEach(track => track.stop());
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    console.log("📤 SENDING OFFER TO:", remoteId);
+    socket.emit("offer", {
+      toPeerId: remoteId,
+      fromPeerId: peerId.current,
+      sdp: offer
+    });
+  });
+
+  socket.on("offer", async ({ fromPeerId: remoteId, sdp }) => {
+    console.log("📩 OFFER RECEIVED FROM:", remoteId);
+    const pc = createPeerConnection(remoteId);
+
+    if (localStream) {
+      localStream.getTracks().forEach(track =>
+        pc.addTrack(track, localStream)
+      );
     }
 
-    // 2. Close all PeerConnections
-    Object.values(peerConnections.current).forEach(pc => pc.close());
-    peerConnections.current = {};
+    await pc.setRemoteDescription(sdp);
 
-    // 3. Notify Backend
-    socket.emit("leave-room", { roomId, peerId: peerId.current });
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
 
-    // 4. Reset state
-    setPeers({});
-    setLocalStream(null);
-    setScreenStream(null);
-    setIsSharing(false);
+    console.log("📤 SENDING ANSWER TO:", remoteId);
+    socket.emit("answer", {
+      toPeerId: remoteId,
+      fromPeerId: peerId.current,
+      sdp: answer
+    });
+  });
+
+  socket.on("answer", async ({ fromPeerId: remoteId, sdp }) => {
+    console.log("📩 ANSWER RECEIVED FROM:", remoteId);
+    const pc = peerConnections.current[remoteId];
+    if (!pc) return;
+    await pc.setRemoteDescription(sdp);
+  });
+
+  socket.on("ice-candidate", async ({ fromPeerId, candidate }) => {
+    const pc = peerConnections.current[fromPeerId];
+    if (!pc) return;
+    await pc.addIceCandidate(candidate);
+  });
+
+  socket.on("screen-started", ({ peerId }) => {
+    console.log("Screen started by:", peerId);
+  });
+
+  socket.on("screen-stopped", () => {
+    console.log("Screen stopped");
+  });
+
+  socket.on("mic-toggled", ({ peerId, micEnabled }) => {
+    setPeers(prev => ({
+      ...prev,
+      [peerId]: {
+        ...prev[peerId],
+        micEnabled
+      }
+    }));
+  });
+
+  socket.on("cam-toggled", ({ peerId, camEnabled }) => {
+    setPeers(prev => ({
+      ...prev,
+      [peerId]: {
+        ...prev[peerId],
+        camEnabled
+      }
+    }));
+  });
+}
+
+function leaveRoom(roomId) {
+  console.log("🚪 LEAVING ROOM:", roomId);
+
+  // 1. Stop all local tracks
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+  if (screenStream) {
+    screenStream.getTracks().forEach(track => track.stop());
   }
 
-  return {
-    localStream,
-    peers,
-    joinRoom,
-    leaveRoom,
-    startScreenShare,
-    stopScreenShare,
-    isSharing,
-    screenStream,
-    toggleMic,
-    toggleCam,
-    micEnabled,
-    camEnabled,
-    username,
-    isHost,
-    kickPeer,
-    muteAll
-  };
+  // 2. Close all PeerConnections
+  Object.values(peerConnections.current).forEach(pc => pc.close());
+  peerConnections.current = {};
+
+  // 3. Notify Backend
+  socket.emit("leave-room", { roomId, peerId: peerId.current });
+
+  // 4. Reset state
+  setPeers({});
+  setLocalStream(null);
+  setScreenStream(null);
+  setIsSharing(false);
+}
+
+return {
+  localStream,
+  peers,
+  joinRoom,
+  leaveRoom,
+  startScreenShare,
+  stopScreenShare,
+  isSharing,
+  screenStream,
+  toggleMic,
+  toggleCam,
+  micEnabled,
+  camEnabled,
+  username,
+  isHost,
+  kickPeer,
+  muteAll,
+  media,
+  playback
+};
 }
