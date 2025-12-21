@@ -37,7 +37,7 @@ console.log(`📡 Attempting to connect to DB at host: ${maskedHost}...`);
 connectDB()
     .then(async () => {
         console.log("🛠️ Syncing database models...");
-        await sequelize.sync({ alter: true });
+        await sequelize.sync();
         console.log("✅ Database synced and schema updated successfully");
         server.listen(PORT, "0.0.0.0", () => {
             console.log(`🚀 Server running on port ${PORT} (0.0.0.0)`);
