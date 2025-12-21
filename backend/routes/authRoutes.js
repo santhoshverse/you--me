@@ -16,6 +16,12 @@ router.post("/social", async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
+        const { provider, providerUserId, email, name, avatarUrl } = req.body;
+
+        if (!provider || !providerUserId) {
+            return res.status(400).json({ error: "Missing required provider or providerUserId" });
+        }
+
         // Derive base name from email if name is sparse or for username uniqueness
         const emailPrefix = email ? email.split("@")[0] : "user";
         const randomSuffix = Math.floor(Math.random() * 90 + 10); // 2-digit number (10-99)
