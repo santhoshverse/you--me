@@ -1,6 +1,5 @@
 import express from "express";
 import { User } from "../models/index.js";
-import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();
 
@@ -9,55 +8,51 @@ router.post("/signup", async (req, res) => {
     try {
         console.log("-----------------------------------------");
         console.log("📥 RECEIVED SIGNUP REQUEST");
-        console.log("Headers:", JSON.stringify(req.headers, null, 2));
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
-        const { username, name, password, confirmPassword, display_name, email } = req.body;
+        const { username, email, password, confirmPassword } = req.body;
 
-        // Robust field mapping
-        const actualUsername = username || name;
-        const actualDisplayName = display_name || name || username || "User";
-
-        if (!actualUsername || !password || !confirmPassword || !email) {
+        // Strict Validation
+        if (!username || !email || !password || !confirmPassword) {
             const missing = [];
-            if (!actualUsername) missing.push("name");
+            if (!username) missing.push("username");
+            if (!email) missing.push("email");
             if (!password) missing.push("password");
             if (!confirmPassword) missing.push("confirmPassword");
-            if (!email) missing.push("email");
 
             console.warn(`⚠️ Signup failed: Missing fields [${missing.join(", ")}]`);
-            return res.status(400).json({
-                error: `Missing required fields: ${missing.join(", ")}`,
-                received: req.body
-            });
+            return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
         }
+
         if (password !== confirmPassword) {
             console.warn("⚠️ Signup failed: Passwords do not match");
             return res.status(400).json({ error: "Passwords do not match" });
         }
 
-        const existingUsername = await User.findOne({ where: { username } });
+        // Check if username already exists
+        const existingUsername = await User.findOne({ where: { username: username } });
         if (existingUsername) {
             console.warn(`⚠️ Signup failed: Username ${username} already taken`);
             return res.status(400).json({ error: "Username already taken" });
         }
 
-        const existingEmail = await User.findOne({ where: { email } });
+        // Check if email already exists
+        const existingEmail = await User.findOne({ where: { email: email } });
         if (existingEmail) {
             console.warn(`⚠️ Signup failed: Email ${email} already registered`);
             return res.status(400).json({ error: "Email already registered" });
         }
 
         const user = await User.create({
-            username: actualUsername,
+            username,
+            email,
             password_hash: password, // TODO: bcrypt
-            display_name: actualDisplayName,
-            email
+            display_name: username
         });
 
         console.log(`✅ User created: ${user.username}`);
-        res.json({ userId: user.id, username: user.username, name: user.display_name });
+        res.status(201).json({ userId: user.id, username: user.username, name: user.display_name });
     } catch (e) {
         console.error("❌ Signup crash:", e);
         if (e.name === 'SequelizeUniqueConstraintError') {
@@ -98,7 +93,6 @@ router.post("/login", async (req, res) => {
 
 // Social Login Placeholder
 router.post("/social", async (req, res) => {
-    // Placeholder for Google/Apple auth logic
     res.status(501).json({ error: "Social login coming soon!" });
 });
 
