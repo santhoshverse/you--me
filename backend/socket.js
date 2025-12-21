@@ -24,6 +24,8 @@ export function socketHandler(io) {
             socket.join(roomId);
             socket.roomId = roomId;
 
+            console.log(`✅ Socket ${socket.id} joined room: "${roomId}". Current rooms:`, ...socket.rooms);
+
             if (username) {
                 socket.username = username;
             }

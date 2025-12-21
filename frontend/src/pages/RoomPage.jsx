@@ -47,6 +47,11 @@ function RoomContent({ roomId, username }) {
 
     useEffect(() => {
         joinRoom(roomId, username);
+
+        // CLEANUP: Leave room when unmounting or switching rooms
+        return () => {
+            leaveRoom(roomId);
+        };
     }, [roomId, username]);
 
     const handleActualLeave = () => {
