@@ -6,16 +6,21 @@ const User = sequelize.define("User", {
     username: {
         type: DataTypes.STRING,
         unique: true,
-        allowNull: true // Null for guests
+        allowNull: true
     },
     email: {
         type: DataTypes.STRING,
         unique: true,
         allowNull: true
     },
-    password_hash: {
+    auth_provider: {
+        type: DataTypes.STRING, // 'google', 'apple'
+        allowNull: true
+    },
+    provider_user_id: {
         type: DataTypes.STRING,
-        allowNull: true // Null for guests
+        unique: true,
+        allowNull: true
     },
     display_name: {
         type: DataTypes.STRING,
