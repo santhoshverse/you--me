@@ -21,7 +21,7 @@ router.post("/signup", async (req, res) => {
 
         if (!actualUsername || !password || !confirmPassword || !email) {
             const missing = [];
-            if (!actualUsername) missing.push("username/name");
+            if (!actualUsername) missing.push("name");
             if (!password) missing.push("password");
             if (!confirmPassword) missing.push("confirmPassword");
             if (!email) missing.push("email");
@@ -80,7 +80,7 @@ router.post("/login", async (req, res) => {
         const actualUsername = username || name;
 
         if (!actualUsername || !password) {
-            return res.status(400).json({ error: "Missing username/name or password" });
+            return res.status(400).json({ error: "Missing name or password" });
         }
 
         const user = await User.findOne({ where: { username: actualUsername, password_hash: password } });
