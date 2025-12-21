@@ -11,9 +11,17 @@ router.post("/signup", async (req, res) => {
         const { username, password, confirmPassword, display_name, email } = req.body;
 
         // Validation
+        const actualDisplayName = display_name || req.body.name || username;
+
         if (!username || !password || !confirmPassword || !email) {
-            console.warn("⚠️ Signup failed: Missing fields");
-            return res.status(400).json({ error: "Missing required fields: username, password, or email" });
+            const missing = [];
+            if (!username) missing.push("username");
+            if (!password) missing.push("password");
+            if (!confirmPassword) missing.push("confirmPassword");
+            if (!email) missing.push("email");
+
+            console.warn(`⚠️ Signup failed: Missing fields [${missing.join(", ")}]`);
+            return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
         }
         if (password !== confirmPassword) {
             console.warn("⚠️ Signup failed: Passwords do not match");
@@ -35,7 +43,7 @@ router.post("/signup", async (req, res) => {
         const user = await User.create({
             username,
             password_hash: password, // TODO: bcrypt
-            display_name: display_name || username,
+            display_name: actualDisplayName,
             email
         });
 

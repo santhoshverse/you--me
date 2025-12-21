@@ -16,6 +16,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/rooms", roomRoutes);
@@ -48,7 +49,8 @@ connectDB()
         if (err.original) {
             console.error("Original Error Details:", err.original);
         }
-        process.exit(1);
+        // Ensure process exits so Render can restart it
+        setTimeout(() => process.exit(1), 1000);
     });
 
 process.on('unhandledRejection', (reason, promise) => {

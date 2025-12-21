@@ -20,5 +20,6 @@ export async function connectDB() {
         console.log("✅ MySQL connected successfully");
     } catch (err) {
         console.error("❌ MySQL connection error:", err);
+        throw err;
     }
 }
