@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { generateRandomName } from "../utils/randomName";
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function AuthPage() {
     const navigate = useNavigate();
@@ -31,29 +32,57 @@ export default function AuthPage() {
         checkAuth();
     }, [navigate, from, BACKEND_URL]);
 
-    // 2. Simulated Social Login
-    const handleSocialLogin = async (provider) => {
+    // 2. Real Google Login Success
+    const handleGoogleSuccess = async (credentialResponse) => {
         setLoading(true);
         setError("");
-
-        // Simulated user data from Google/Apple
-        const randomNum = Math.floor(Math.random() * 90 + 10);
-        const demoEmail = `gamer${randomNum}@example.com`;
-        const emailPrefix = demoEmail.split("@")[0];
-
-        const simulatedUser = {
-            provider,
-            providerUserId: `social_${Math.random().toString(36).substr(2, 9)}`,
-            email: demoEmail,
-            name: emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1),
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}${randomNum}`
-        };
 
         try {
             const res = await fetch(`${BACKEND_URL}/api/auth/social`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(simulatedUser)
+                body: JSON.stringify({
+                    provider: "google",
+                    idToken: credentialResponse.credential
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("userId", data.userId);
+                localStorage.setItem("name", data.name);
+                localStorage.setItem("username", data.username);
+                navigate(from, { replace: true });
+            } else {
+                setError(data.error || "Login failed");
+            }
+        } catch (err) {
+            setError("Connection to auth server failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 3. Simulated Social Login (Keeping for Apple/Testing)
+    const handleSocialLogin = async (provider) => {
+        setLoading(true);
+        setError("");
+
+        // Simulated user data for demo/apple
+        const randomNum = Math.floor(Math.random() * 90 + 10);
+        const demoEmail = `user${randomNum}@example.com`;
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/auth/social`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    provider: provider.toLowerCase(),
+                    email: demoEmail,
+                    name: `User ${randomNum}`,
+                    providerUserId: `simulated_${randomNum}`
+                })
             });
 
             const data = await res.json();
@@ -84,14 +113,14 @@ export default function AuthPage() {
                 {error && <p style={errorStyle}>{error}</p>}
 
                 <div style={buttonGroup}>
-                    <button
-                        onClick={() => handleSocialLogin("Google")}
-                        style={socialBtnPrimary}
-                        disabled={loading}
-                    >
-                        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="G" style={{ width: "18px", marginRight: "10px" }} />
-                        {loading ? "Connecting..." : "Continue with Google"}
-                    </button>
+                    <div style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "10px" }}>
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={() => setError("Google Login Failed")}
+                            theme="filled_black"
+                            shape="pill"
+                        />
+                    </div>
 
                     <button
                         onClick={() => handleSocialLogin("Apple")}

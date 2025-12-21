@@ -1,5 +1,6 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/index.js";
 import { generateRandomName } from "../utils/randomName.js";
 
@@ -7,6 +8,8 @@ const router = express.Router();
 
 // JWT Secret - In production, this must be in .env
 const JWT_SECRET = process.env.JWT_SECRET || "you_and_me_super_secret_key";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "PASTE_YOUR_ID_HERE";
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // --- Social Login (Find or Create) ---
 router.post("/social", async (req, res) => {
@@ -16,10 +19,35 @@ router.post("/social", async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
         console.log("-----------------------------------------");
 
-        const { provider, providerUserId, email, name, avatarUrl } = req.body;
+        let { provider, providerUserId, email, name, avatarUrl, idToken } = req.body;
 
-        if (!provider || !providerUserId) {
-            return res.status(400).json({ error: "Missing required provider or providerUserId" });
+        if (!provider) return res.status(400).json({ error: "Missing provider" });
+
+        // --- GOOGLE VERIFICATION ---
+        if (provider === "google") {
+            if (!idToken) return res.status(400).json({ error: "Missing Google ID Token" });
+
+            try {
+                const ticket = await client.verifyIdToken({
+                    idToken: idToken,
+                    audience: GOOGLE_CLIENT_ID,
+                });
+                const payload = ticket.getPayload();
+
+                // Override body with verified data
+                providerUserId = payload['sub'];
+                email = payload['email'];
+                name = payload['name'];
+                avatarUrl = payload['picture'];
+                console.log(`✅ Google Token Verified: ${email}`);
+            } catch (authError) {
+                console.error("❌ Google Auth Verification Failed:", authError);
+                return res.status(401).json({ error: "Invalid Google token" });
+            }
+        }
+        else if (!providerUserId) {
+            // Apple or Simulation fallback
+            return res.status(400).json({ error: "Missing providerUserId for non-Google provider" });
         }
 
         // Derive base name from email if name is sparse or for username uniqueness

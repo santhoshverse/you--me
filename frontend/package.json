@@ -10,6 +10,7 @@
     "dependencies": {
         "@mediapipe/camera_utils": "^0.3.1675466862",
         "@mediapipe/selfie_segmentation": "^0.1.1675465747",
+        "@react-oauth/google": "^0.13.0",
         "gsap": "^3.14.2",
         "react": "^18.3.0",
         "react-dom": "^18.3.0",
