@@ -35,23 +35,32 @@ function RoomContent({ roomId, username }) {
         playback
     } = useWebRTC();
 
-    const [localVideoUrl, setLocalVideoUrl] = useState(null);
+    // --- MODE & STATE ---
+    const [localVideoUrl, setLocalVideoUrl] = useState(null); // Deprecated but keeping for prop compat if needed (we pass null now)
     const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
-
-    const resetMediaModes = () => {
-        setLocalVideoUrl(null);
-        if (isSharing) stopScreenShare(roomId);
-    };
-
+    const [remoteScreenPeerId, setRemoteScreenPeerId] = useState(null);
     const [showSecondaryActions, setShowSecondaryActions] = useState(false);
+
+    // Mode Logic
+    const isSyncMode = !!media && media.type !== "file";
+    const isStreamMode = isRemoteScreenSharing || isSharing;
+
+    // Detect who is sharing screen remotely
+    useEffect(() => {
+        if (isRemoteScreenSharing && peers) {
+            const sharerId = Object.keys(peers).find(pid => peers[pid].isSharing);
+            setRemoteScreenPeerId(sharerId);
+        } else {
+            setRemoteScreenPeerId(null);
+        }
+    }, [isRemoteScreenSharing, peers]);
+
+    // Active Stream for Stream Mode
+    const activeStream = isSharing ? screenStream : (remoteScreenPeerId ? peers[remoteScreenPeerId]?.stream : null);
 
     useEffect(() => {
         joinRoom(roomId, username);
-
-        // CLEANUP: Leave room when unmounting or switching rooms
-        return () => {
-            leaveRoom(roomId);
-        };
+        return () => { leaveRoom(roomId); };
     }, [roomId, username]);
 
     const handleActualLeave = () => {
@@ -69,8 +78,12 @@ function RoomContent({ roomId, username }) {
 
     function handleURL(url) {
         if (!url) return;
-        // Sync Mode: Clear local screen share if any, and set media
-        resetMediaModes();
+        if (!isHost) return alert("Only Host can change content.");
+
+        // Sync Mode: Set media. Backend will clear screen share.
+        // We also stop local screen share just in case.
+        if (isSharing) stopScreenShare(roomId);
+
         socket.emit("set-media", {
             roomId,
             media: { type: "url", url }
@@ -78,29 +91,35 @@ function RoomContent({ roomId, username }) {
     }
 
     const handleSelectMedia = (type, payload) => {
+        if (!isHost) return alert("Only Host can change content.");
+
         if (type === "file" && payload) {
-            // Screen Share Mode (Local File)
-            // 1. Clear Sync Media (so viewers don't see old YouTube)
-            socket.emit("set-media", { roomId, media: null });
+            // Local File -> Enforce Screen Share but play locally so we can capture it
+            const confirmShare = window.confirm("To play a local file, you must share your screen (or specific tab/window). Start Screen Share?");
+            if (confirmShare) {
+                // Clear Sync Media first
+                socket.emit("set-media", { roomId, media: null });
+                // Start Screen Share (Stream Mode)
+                startScreenShare(roomId);
 
-            // 2. Start Screen Share for others to see
-            if (!isSharing) startScreenShare(roomId);
-
-            // 3. Set local URL for Host to see/control
-            const url = URL.createObjectURL(payload);
-            setLocalVideoUrl(url);
+                // Show the file LOCALLY so the host can see it and capture it
+                const url = URL.createObjectURL(payload);
+                setLocalVideoUrl(url);
+            }
 
         } else if (type === "screen") {
             if (isSharing) {
                 stopScreenShare(roomId);
-                socket.emit("set-media", { roomId, media: null }); // Clear state
+                setLocalVideoUrl(null);
             } else {
-                resetMediaModes();
+                // Clear Sync Media
                 socket.emit("set-media", { roomId, media: null });
+                setLocalVideoUrl(null);
                 startScreenShare(roomId);
             }
         } else {
-            const url = prompt("Enter URL:");
+            // YouTube / URL Button
+            const url = prompt("Enter YouTube URL:");
             if (url) handleURL(url);
         }
     };
@@ -225,56 +244,101 @@ function RoomContent({ roomId, username }) {
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
+                {/* Top Bar with URL Input (Host Only) or Info */}
                 <div style={{ background: "#111", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" }}>
                     <div style={{ color: "#777", fontSize: "12px", border: "1px solid #333", padding: "5px 10px", borderRadius: "5px", background: "#000" }}>
                         ROOM: <span style={{ color: "#7a35f0", fontWeight: "bold" }}>{roomId}</span>
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Paste YouTube, Video, or Website URL..."
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                handleURL(e.target.value);
-                                e.target.value = "";
-                            }
-                        }}
-                        style={{
-                            width: "60%",
-                            padding: "10px",
-                            fontSize: "14px",
-                            borderRadius: "8px",
-                            border: "1px solid #333",
-                            background: "#222",
-                            color: "white",
-                            outline: "none"
-                        }}
-                    />
+                    {isHost && (
+                        <input
+                            type="text"
+                            placeholder="Paste YouTube or Web Video URL (Sync Mode)..."
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleURL(e.target.value);
+                                    e.target.value = "";
+                                }
+                            }}
+                            style={{
+                                width: "60%",
+                                padding: "10px",
+                                fontSize: "14px",
+                                borderRadius: "8px",
+                                border: "1px solid #333",
+                                background: "#222",
+                                color: "white",
+                                outline: "none"
+                            }}
+                        />
+                    )}
+                    {!isHost && (
+                        <div style={{ color: "#555", fontSize: "12px", fontStyle: "italic" }}>
+                            Waiting for host to select content...
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    <YouTubePlayer
-                        roomId={roomId}
-                        localVideoUrl={localVideoUrl}
-                        setLocalVideoUrl={setLocalVideoUrl}
-                        isHost={isHost}
-                        media={media}
-                        playback={playback}
-                    />
 
-                    {screenStream && (
-                        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10, background: "black" }}>
+                    {/* 0. LOCAL FILE SOURCE (Host Only - The content being shared) */}
+                    {localVideoUrl && (
+                        <div style={{ width: "100%", height: "100%", zIndex: 11 }}>
+                            {/* Hint Overlay */}
+                            <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 20, background: "rgba(122, 53, 240, 0.8)", padding: "5px 10px", borderRadius: "5px", color: "white", fontSize: "12px", pointerEvents: "none" }}>
+                                🔴 You must Share This Tab for others to see this video!
+                            </div>
                             <video
-                                autoPlay
+                                src={localVideoUrl}
+                                controls
                                 playsInline
                                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                                ref={(video) => {
-                                    if (video) video.srcObject = screenStream;
-                                }}
                             />
                         </div>
                     )}
 
-                    {/* Floating Camera Overlay (Avatars) */}
+                    {/* 1. SYNC MODE: YouTube Player */}
+                    {!localVideoUrl && isSyncMode && (
+                        <div style={{ width: "100%", height: "100%" }}>
+                            <YouTubePlayer
+                                roomId={roomId}
+                                localVideoUrl={null}
+                                setLocalVideoUrl={() => { }}
+                                isHost={isHost}
+                                media={media}
+                                playback={playback}
+                            />
+                        </div>
+                    )}
+
+                    {/* 2. STREAM MODE: Screen Share (Local or Remote) */}
+                    {!localVideoUrl && isStreamMode && activeStream && (
+                        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10, background: "black" }}>
+                            {/* Label to indicate who is sharing */}
+                            <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 20, background: "rgba(0,0,0,0.7)", padding: "5px 10px", borderRadius: "5px", color: "white", fontSize: "12px", pointerEvents: "none" }}>
+                                {isSharing ? "You are sharing your screen" : `${peers[remoteScreenPeerId]?.username || "Target"} is sharing screen`}
+                            </div>
+                            <video
+                                autoPlay
+                                playsInline
+                                ref={(video) => {
+                                    if (video && video.srcObject !== activeStream) {
+                                        video.srcObject = activeStream;
+                                    }
+                                }}
+                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                            />
+                        </div>
+                    )}
+
+                    {/* 3. IDLE STATE */}
+                    {!localVideoUrl && !isSyncMode && !isStreamMode && (
+                        <div style={{ color: "#444", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                            <div style={{ fontSize: "40px" }}>📺</div>
+                            <div>Waiting for content...</div>
+                        </div>
+                    )}
+
+                    {/* Floating Camera Overlay (Avatars) - ALWAYS VISIBLE */}
                     <div style={{
                         position: "absolute",
                         bottom: "20px",
@@ -282,7 +346,7 @@ function RoomContent({ roomId, username }) {
                         transform: "translateX(-50%)",
                         zIndex: 100,
                         width: "auto",
-                        pointerEvents: "none" // Let clicks pass through to video unless on an avatar
+                        pointerEvents: "none"
                     }}>
                         <div style={{ pointerEvents: "auto" }}>
                             <CouchLayout
