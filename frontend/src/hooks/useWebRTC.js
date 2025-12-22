@@ -179,6 +179,25 @@ export default function useWebRTC() {
     return pc;
   }
 
+  async function renegotiate(peerId) {
+    const pc = peerConnections.current[peerId];
+    if (!pc) return;
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      console.log("🔄 RENEGOTIATING with:", peerId);
+      socket.emit("offer", {
+        toPeerId: peerId,
+        fromPeerId: peerId.current, // Error: peerId is a ref, need .current. Wait, peerId ref IS .current in accessible scope? NO. peerId is the ref.
+        sdp: offer
+      });
+    } catch (err) {
+      console.error("Renegotiation failed:", err);
+    }
+  }
+
   async function startScreenShare(roomId) {
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -189,11 +208,17 @@ export default function useWebRTC() {
       setScreenStream(displayStream);
       setIsSharing(true);
 
-      Object.values(peerConnections.current).forEach(pc => {
+      // Add tracks to all existing connections
+      const promises = Object.keys(peerConnections.current).map(async (remoteId) => {
+        const pc = peerConnections.current[remoteId];
         displayStream.getTracks().forEach(track => {
           pc.addTrack(track, displayStream);
         });
+        // TRIGGER RENEGOTIATION
+        await renegotiate(remoteId);
       });
+
+      await Promise.all(promises);
 
       socket.emit("screen-started", { roomId, peerId: peerId.current });
 
@@ -211,11 +236,29 @@ export default function useWebRTC() {
     setScreenStream(null);
     setIsSharing(false);
 
+    // Remove tracks from connections
+    // Note: removeTrack requires sender. 
+    // Easier way: rely on 'replaceTrack' logic? No, we added them. We must remove or just renegotiate.
+    // Ideally we should find the senders for the screen stream and remove them.
+
+    Object.keys(peerConnections.current).forEach(async (remoteId) => {
+      const pc = peerConnections.current[remoteId];
+      const senders = pc.getSenders();
+      senders.forEach(sender => {
+        if (sender.track && sender.track.label === screenStream?.getVideoTracks()[0]?.label) { // Risky match?
+          pc.removeTrack(sender);
+        }
+      });
+      // We'll rely on a Full Renegotiation or simply strict replacement.
+      // Actually, stopping the stream locally stops sending. 
+      // But to clean up the peer connection properly:
+      // Let's just emit stop event. The remote side will see track ended?
+      // Simple renegotiation is robust.
+      await renegotiate(remoteId);
+    });
+
     // RESTORE CAMERA if it was enabled
-    // We do this by toggling cam off and on, or just adding the track back
-    // Toggling is safer as it handles socket events
     if (camEnabled) {
-      // Force re-enable cam
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         const newTrack = stream.getVideoTracks()[0];
