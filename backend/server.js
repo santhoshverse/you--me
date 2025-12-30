@@ -10,11 +10,17 @@ import { socketHandler } from "./socket.js";
 
 // Production Server Initialization
 const app = express();
-app.use(cors({
-    origin: "*",
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        // Dynamically allow the request origin to solve CORS issues with credentials
+        callback(null, true);
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
-}));
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -64,7 +70,10 @@ const server = http.createServer(app);
 // WebSocket server
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            callback(null, true);
+        },
         methods: ["GET", "POST"],
         credentials: true
     },
