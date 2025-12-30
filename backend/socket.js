@@ -35,6 +35,9 @@ export function socketHandler(io) {
                 roomHosts.set(roomId, peerId);
             }
 
+            // Determine screen share permission (Host gets it by default)
+            const isHost = !io.sockets.adapter.rooms.get(roomId) || io.sockets.adapter.rooms.get(roomId).size === 0 || roomHosts.get(roomId) === peerId;
+
             // Try DB, ignore if fails
             try {
                 await RoomMember.upsert({
@@ -43,6 +46,7 @@ export function socketHandler(io) {
                     username: socket.username || "Guest",
                     mic_enabled: true,
                     cam_enabled: true,
+                    screen_share_enabled: isHost, // Only host starts with permission
                     is_sharing: false
                 });
             } catch (e) { console.warn("DB Error (RoomMember):", e.message); }
@@ -168,7 +172,26 @@ export function socketHandler(io) {
             } catch (e) { console.warn("Media update failed:", e); }
         });
 
-        // ... [Player Actions skipped, no change needed] ...
+        // Player Actions (Play/Pause/Seek/Time)
+        socket.on("player-action", async ({ roomId, action }) => {
+            try {
+                // Update DB to persist state
+                // Action: { type: "play"|"pause"|"seek", time, isPlaying }
+                const updateData = {
+                    playback: {
+                        time: action.time,
+                        isPlaying: action.isPlaying,
+                        updatedAt: Date.now()
+                    }
+                };
+
+                await RoomState.update(updateData, { where: { room_id: roomId } });
+
+                // Broadcast to everyone (including sender to confirm state)
+                io.to(roomId).emit("room-state", { state: updateData });
+
+            } catch (e) { console.error("Player Action Error:", e); }
+        });
 
         // Screen Sharing Started (Stream Mode)
         socket.on("screen-started", async ({ roomId, peerId }) => {
@@ -185,9 +208,11 @@ export function socketHandler(io) {
                 );
                 await RoomMember.update({ is_sharing: true }, { where: { room_id: roomId, peer_id: peerId } });
 
-                // Fetch updated state to broadcast the "media: null" change
+                // Fetch updated state AND members
                 const state = await RoomState.findOne({ where: { room_id: roomId } });
-                io.to(roomId).emit("room-state", { state });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+
+                io.to(roomId).emit("room-state", { state, members });
 
             } catch (e) { }
 
@@ -203,9 +228,11 @@ export function socketHandler(io) {
                 );
                 await RoomMember.update({ is_sharing: false }, { where: { room_id: roomId, peer_id: peerId } });
 
-                // Fetch state to ensure clients know is_screen_sharing is false
+                // Fetch state AND members
                 const state = await RoomState.findOne({ where: { room_id: roomId } });
-                io.to(roomId).emit("room-state", { state });
+                const members = await RoomMember.findAll({ where: { room_id: roomId } });
+
+                io.to(roomId).emit("room-state", { state, members });
 
             } catch (e) { }
 
@@ -213,7 +240,7 @@ export function socketHandler(io) {
         });
 
         // Host Controls
-        socket.on("admin-action", ({ roomId, action, targetPeerId }) => {
+        socket.on("admin-action", async ({ roomId, action, targetPeerId }) => {
             const hostId = roomHosts.get(roomId);
             if (hostId !== socket.peerId) return; // Only host can do this
 
@@ -225,6 +252,19 @@ export function socketHandler(io) {
                 }
             } else if (action === "mute-all") {
                 io.to(roomId).emit("force-mute");
+            } else if (action === "toggle-screen-share") {
+                // Grant/Revoke screen share permission
+                try {
+                    const member = await RoomMember.findOne({ where: { room_id: roomId, peer_id: targetPeerId } });
+                    if (member) {
+                        const newStatus = !member.screen_share_enabled;
+                        await member.update({ screen_share_enabled: newStatus });
+
+                        // Broadcast update
+                        const members = await RoomMember.findAll({ where: { room_id: roomId } });
+                        io.to(roomId).emit("room-state", { members });
+                    }
+                } catch (e) { console.error("Failed to toggle permission", e); }
             }
         });
 

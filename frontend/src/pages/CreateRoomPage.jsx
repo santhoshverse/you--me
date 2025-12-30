@@ -10,7 +10,7 @@ export default function CreateRoomPage() {
     async function handleCreateRoom() {
         setLoading(true);
         try {
-            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
             const res = await fetch(`${BACKEND_URL}/api/rooms/create`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" }
@@ -22,7 +22,7 @@ export default function CreateRoomPage() {
             }
         } catch (err) {
             console.error("Failed to create room:", err);
-            alert("Failed to create room. Please try again.");
+            alert(`Failed to create room: ${err.message}. Check if Backend is running on port 5000.`);
         } finally {
             setLoading(false);
         }
@@ -50,16 +50,7 @@ export default function CreateRoomPage() {
     return (
         <div style={containerStyle}>
             {/* Header / Top Nav */}
-            <div style={headerStyle}>
-                {user.token ? (
-                    <div style={userSection}>
-                        <span style={userNameText}>{user.name}</span>
-                        <button onClick={handleLogout} style={logoutBtn}>Logout</button>
-                    </div>
-                ) : (
-                    <button onClick={() => navigate("/auth")} style={loginBtn}>Login</button>
-                )}
-            </div>
+            {/* Header Removed */}
 
             <div style={glassCard}>
                 <h1 style={titleStyle}>You & Me</h1>

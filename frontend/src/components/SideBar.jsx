@@ -123,19 +123,7 @@ export default function SideBar({
                     🖥️
                 </button>
 
-                <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
 
-                {/* Copy Link */}
-                <button
-                    className="sidebar-btn"
-                    onClick={handleCopy}
-                    style={copied ? { ...btnStyle, background: "#00b894" } : btnStyle}
-                    title="Copy Invite Link"
-                >
-                    {copied ? "✅" : "🔗"}
-                </button>
-
-                <hr style={{ borderColor: "#333", width: "50%", margin: "20px auto" }} />
 
                 {/* Host Controls */}
                 {isHost && (

@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-export const PORT = process.env.PORT || 4000;
+export const PORT = process.env.PORT || 5000;
 
 const dbName = process.env.MYSQL_DATABASE;
 const productionDb = (dbName === "w2g" || !dbName) ? "railway" : dbName;

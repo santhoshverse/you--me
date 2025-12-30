@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function UserList({ peers, localUsername }) {
+export default function UserList({ peers, localUsername, isHost, onTogglePermission }) {
     const remoteMembers = Object.values(peers);
     const totalCount = remoteMembers.length + 1; // +1 for local user
 
@@ -44,7 +44,30 @@ export default function UserList({ peers, localUsername }) {
                 {remoteMembers.map(peer => (
                     <div key={peer.peerId} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <div style={{ width: "8px", height: "8px", background: "#4caf50", borderRadius: "50%" }}></div>
-                        <span style={{ color: "#ccc", fontSize: "14px" }}>{peer.username || "Guest"}</span>
+                        <span style={{ color: "#ccc", fontSize: "14px", flex: 1 }}>{peer.username || "Guest"}</span>
+
+                        {/* Screen Share Permission Toggle (Host Only) */}
+                        {isHost && (
+                            <button
+                                onClick={() => onTogglePermission(peer.peerId)}
+                                title={peer.screen_share_enabled ? "Revoke Screen Share" : "Allow Screen Share"}
+                                style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: peer.screen_share_enabled ? "#4caf50" : "#555",
+                                    padding: "4px",
+                                    display: "flex",
+                                    alignItems: "center"
+                                }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                                </svg>
+                            </button>
+                        )}
                     </div>
                 ))}
             </div>

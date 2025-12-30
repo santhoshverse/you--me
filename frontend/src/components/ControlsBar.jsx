@@ -5,7 +5,9 @@ export default function ControlsBar({
     toggleCam,
     micEnabled,
     camEnabled,
-    roomId
+    roomId,
+    onSelectMedia,
+    isSharing
 }) {
     return (
         <div style={barStyle}>
@@ -20,14 +22,21 @@ export default function ControlsBar({
             </button>
 
             {/* Screen Share */}
-            <button onClick={() => alert("Screen Share Feature Coming Soon!")} style={{ ...btnStyle, background: "#e91e63" }}>
-                💻 Share Screen
+            <button
+                onClick={() => onSelectMedia("screen")}
+                style={{ ...btnStyle, background: isSharing ? "#ff4757" : "#e91e63" }}
+            >
+                {isSharing ? "⏹ Stop Sharing" : "💻 Share Screen"}
             </button>
 
             {/* Local File */}
             <label style={{ ...btnStyle, background: "#00bfa5", cursor: "pointer" }}>
                 📂 Local File
-                <input type="file" style={{ display: "none" }} onChange={(e) => alert(`File Selected: ${e.target.files[0]?.name}`)} />
+                <input
+                    type="file"
+                    style={{ display: "none" }}
+                    onChange={(e) => onSelectMedia("file", e.target.files[0])}
+                />
             </label>
         </div>
     );

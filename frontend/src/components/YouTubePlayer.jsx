@@ -5,6 +5,7 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
     const playerRef = useRef(null);
     const ytContainerRef = useRef(null);
     const localVideoRef = useRef(null);
+    const containerRef = useRef(null); // Ref for Fullscreen
     const isRemoteUpdate = useRef(false);
 
     // Fix: Use ref to track localVideoUrl in the socket closure
@@ -27,10 +28,12 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
         if (localVideoUrl) {
             setVideoId(null);
             setIframeURL(null);
-            setRequiredFile(null); // Clear prompt if we have url
+            // If we have a local URL, we don't need to prompt for file anymore
+            setRequiredFile(null);
             setWebVideo(localVideoUrl);
         } else {
-            // If localVideoUrl is cleared from parent, clear webVideo if it was a local video
+            // If localVideoUrl is cleared, we might need to reset to "Waiting" or show prompt IF media.type is file
+            // The media effect below will handle re-setting requiredFile if needed
             if (webVideo && webVideo.startsWith("blob:")) {
                 setWebVideo(null);
             }
@@ -118,11 +121,14 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
     // Local Video Events
     const handleVideoEvent = (type) => {
         if (!isHost) return;
+        // If we are currently processing a remote update, do not emit back (feedback loop)
         if (!localVideoRef.current || isRemoteUpdate.current) return;
+
         const video = localVideoRef.current;
         const time = video.currentTime;
         const isPlaying = !video.paused;
 
+        // Debounce frequent updates? No, direct is fine for now.
         socket.emit("player-action", { roomId, action: { type, time, isPlaying } });
     };
 
@@ -207,9 +213,21 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
         if (localVideoRef.current) localVideoRef.current.currentTime = newTime;
     };
 
+    // Local Playback State for immediate UI response
+    const [localIsPlaying, setLocalIsPlaying] = useState(false);
+
+    useEffect(() => {
+        if (playback) {
+            setLocalIsPlaying(playback.isPlaying);
+        }
+    }, [playback]);
+
     const handlePlayPause = () => {
         if (!isHost) return;
-        const newIsPlaying = !playback?.isPlaying;
+
+        // Toggle based on LOCAL state for immediate feedback
+        const newIsPlaying = !localIsPlaying;
+        setLocalIsPlaying(newIsPlaying);
         const time = currentTime;
 
         socket.emit("player-action", {
@@ -217,8 +235,8 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
             action: { type: newIsPlaying ? "play" : "pause", time, isPlaying: newIsPlaying }
         });
 
-        // Apply locally (although prop update will catch it, better responsiveness)
-        if (playerRef.current) {
+        // Apply locally
+        if (playerRef.current && typeof playerRef.current.playVideo === "function") {
             if (newIsPlaying) playerRef.current.playVideo();
             else playerRef.current.pauseVideo();
         }
@@ -244,6 +262,18 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
         if (localVideoRef.current) localVideoRef.current.currentTime = newTime;
     };
 
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            if (containerRef.current) {
+                containerRef.current.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            }
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
     // Sync Logic for incoming Media Props (reset)
     useEffect(() => {
         // Handle media changes if passed from parent
@@ -263,8 +293,8 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
                     setIframeURL(null);
                     setRequiredFile(null);
                 }
-            } else if (type === "video") {
-                // handled by localVideoUrl prop usually?
+            } else if (type === "video" || type === "player") {
+                // "player" type comes from our new Upload logic
                 setWebVideo(url);
                 setVideoId(null);
             } else if (type === "file") {
@@ -289,7 +319,7 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
     }
 
     return (
-        <div style={{ textAlign: "center", width: "100%", height: "100%", position: "relative", group: "player" }}>
+        <div ref={containerRef} style={{ textAlign: "center", width: "100%", height: "100%", position: "relative", group: "player", background: "#000" }}>
 
             {/* Video Container */}
             <div style={{ height: "calc(100% - 50px)", width: "100%", position: "relative" }}>
@@ -301,11 +331,36 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
 
                 {/* Guest File Prompt */}
                 {requiredFile && !webVideo && (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "white" }}>
-                        <h3>Host is playing: {requiredFile}</h3>
-                        <p>Please select the same file on your device to sync.</p>
-                        <label style={{ marginTop: "20px", padding: "10px 20px", background: "#7a35f0", borderRadius: "8px", cursor: "pointer" }}>
-                            Select File
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#eee", fontFamily: "sans-serif", background: "#111" }}>
+                        <div style={{ fontSize: "50px", marginBottom: "20px" }}>🎬</div>
+                        <h2 style={{ marginBottom: "10px" }}>Local Video Session</h2>
+                        <p style={{ marginBottom: "5px", color: "#aaa" }}>The host has selected a local video file.</p>
+
+                        <div style={{
+                            background: "#222",
+                            padding: "10px 20px",
+                            borderRadius: "8px",
+                            border: "1px solid #333",
+                            margin: "20px 0",
+                            maxWidth: "80%",
+                            wordBreak: "break-all"
+                        }}>
+                            <span style={{ color: "#777", fontSize: "12px", textTransform: "uppercase", display: "block", marginBottom: "5px" }}>Target File</span>
+                            <strong style={{ color: "#fff", fontSize: "14px" }}>{requiredFile}</strong>
+                        </div>
+
+                        <p style={{ marginBottom: "25px", fontSize: "14px", color: "#bbb" }}>To watch together, please select the same file from your device.</p>
+
+                        <label style={{
+                            padding: "12px 30px",
+                            background: "linear-gradient(135deg, #7a35f0, #5b2ac2)",
+                            borderRadius: "30px",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            boxShadow: "0 4px 15px rgba(122, 53, 240, 0.4)",
+                            transition: "transform 0.2s"
+                        }}>
+                            📂 Select Video File
                             <input type="file" style={{ display: "none" }} onChange={(e) => {
                                 if (e.target.files[0]) {
                                     setLocalVideoUrl(URL.createObjectURL(e.target.files[0]));
@@ -319,16 +374,22 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
                 {/* YouTube */}
                 <div ref={ytContainerRef} style={{ width: "100%", height: "100%", display: videoId ? "block" : "none", pointerEvents: isHost ? "auto" : "none" }}></div>
 
-                {/* Local Video */}
+                {/* Local Video (or Uploaded Stream) */}
                 {webVideo && (
                     <video
                         ref={localVideoRef}
                         key={webVideo}
                         src={webVideo}
-                        controls={false} // Always false, use custom UI
+                        controls={true} // Enable controls for Host (and Guests) to see time/volume
                         playsInline
                         style={{ width: "100%", height: "100%", objectFit: "contain" }}
                         onLoadedMetadata={(e) => setDuration(e.target.duration)}
+                        // Host events trigger socket actions
+                        onPlay={() => handleVideoEvent("play")}
+                        onPause={() => handleVideoEvent("pause")}
+                        onSeeked={() => handleVideoEvent("seek")}
+                    // Disable interaction for guests via pointer-events (handled below) or just trust them?
+                    // Kosmi usually allows local volume but disables seek/pause for guests.
                     />
                 )}
 
@@ -345,43 +406,103 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
             </div>
 
             {/* CUSTOM CONTROL BAR */}
-            {(videoId || webVideo) && (
+            {(videoId || webVideo || iframeURL) && (
                 <div style={{
-                    height: "50px",
-                    background: "#111",
-                    borderTop: "1px solid #333",
+                    position: "absolute",
+                    bottom: "20px",
+                    left: iframeURL ? "auto" : "50%",
+                    right: iframeURL ? "20px" : "auto",
+                    transform: iframeURL ? "none" : "translateX(-50%)",
+                    width: iframeURL ? "auto" : "90%", // Compact for websites
+                    maxWidth: "800px",
+                    height: "60px",
+                    background: "rgba(20, 20, 20, 0.8)",
+                    backdropFilter: "blur(10px)",
+                    borderRadius: "16px",
                     display: "flex",
                     alignItems: "center",
-                    padding: "0 15px",
-                    gap: "15px",
-                    color: "white"
+                    padding: "0 20px",
+                    gap: "20px",
+                    color: "white",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    opacity: 1,
+                    transition: "opacity 0.3s",
+                    zIndex: 20
                 }}>
-                    <button onClick={handlePlayPause} disabled={!isHost} style={controlBtn}>
-                        {playback?.isPlaying ? "⏸" : "▶"}
+                    <style>{`
+                        input[type=range] {
+                            -webkit-appearance: none;
+                            background: transparent;
+                        }
+                        input[type=range]::-webkit-slider-thumb {
+                            -webkit-appearance: none;
+                            height: 16px;
+                            width: 16px;
+                            border-radius: 50%;
+                            background: #7a35f0;
+                            margin-top: -6px;
+                            box-shadow: 0 0 10px rgba(122, 53, 240, 0.7);
+                            cursor: pointer;
+                        }
+                        input[type=range]::-webkit-slider-runnable-track {
+                            width: 100%;
+                            height: 4px;
+                            cursor: pointer;
+                            background: rgba(255,255,255,0.2);
+                            border-radius: 2px;
+                        }
+                        input[type=range]:focus { outline: none; }
+                    `}</style>
+
+                    {!iframeURL && (
+                        <>
+                            <button onClick={() => handleSkip(-10)} disabled={!isHost} style={controlBtn} title="-10s">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                                </svg>
+                            </button>
+
+                            <button
+                                onClick={handlePlayPause}
+                                disabled={!isHost}
+                                style={{ ...controlBtn, width: "40px", height: "40px", background: "#7a35f0", borderRadius: "50%", color: "white", padding: 0 }}
+                            >
+                                {localIsPlaying ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                                )}
+                            </button>
+
+                            <button onClick={() => handleSkip(10)} disabled={!isHost} style={controlBtn} title="+10s">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+                                </svg>
+                            </button>
+
+                            <input
+                                type="range"
+                                min="0"
+                                max={duration || 100}
+                                step="1"
+                                value={currentTime}
+                                onChange={handleSeek}
+                                disabled={!isHost}
+                                style={{ flex: 1, cursor: isHost ? "pointer" : "default" }}
+                            />
+
+                            <span style={{ fontSize: "14px", fontFamily: "Inter, sans-serif", fontWeight: "600", minWidth: "100px", textAlign: "right" }}>
+                                {formatTime(currentTime)} <span style={{ color: "#888" }}>/</span> {formatTime(duration)}
+                            </span>
+                        </>
+                    )}
+
+                    <button onClick={toggleFullscreen} style={controlBtn} title="Toggle Fullscreen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                        </svg>
                     </button>
-
-                    <button onClick={() => handleSkip(-10)} disabled={!isHost} style={controlBtn}>
-                        ⏪ 10s
-                    </button>
-
-                    <button onClick={() => handleSkip(10)} disabled={!isHost} style={controlBtn}>
-                        ⏩ 10s
-                    </button>
-
-                    <span style={{ fontSize: "12px", fontFamily: "monospace" }}>
-                        {formatTime(currentTime)} / {formatTime(duration)}
-                    </span>
-
-                    <input
-                        type="range"
-                        min="0"
-                        max={duration || 100}
-                        step="1"
-                        value={currentTime}
-                        onChange={handleSeek}
-                        disabled={!isHost}
-                        style={{ flex: 1, cursor: isHost ? "pointer" : "default", accentColor: "#7a35f0" }}
-                    />
                 </div>
             )}
         </div>
@@ -391,12 +512,12 @@ export default function YouTubePlayer({ roomId, localVideoUrl, setLocalVideoUrl,
 const controlBtn = {
     background: "transparent",
     border: "none",
-    color: "white",
-    fontSize: "18px",
+    color: "#ddd",
     cursor: "pointer",
-    padding: "5px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "color 0.2s"
+    transition: "all 0.2s",
+    padding: "8px",
+    borderRadius: "8px"
 };

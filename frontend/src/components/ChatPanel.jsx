@@ -1,7 +1,7 @@
 import React from "react";
 import UserList from "./UserList";
 
-export default function ChatPanel({ messages, chatInput, setChatInput, sendMessage, socket, roomId, username, peers }) {
+export default function ChatPanel({ messages, chatInput, setChatInput, sendMessage, socket, roomId, username, peers, isHost, onTogglePermission }) {
     const messagesContainerRef = React.useRef(null);
     const [typingUsers, setTypingUsers] = React.useState(new Set());
     const typingTimeoutRef = React.useRef(null);
@@ -67,7 +67,7 @@ export default function ChatPanel({ messages, chatInput, setChatInput, sendMessa
 
             {/* Member List - Stays fixed at top or scrolls independently if needed */}
             <div style={{ marginBottom: "15px", maxHeight: "150px", overflowY: "auto" }}>
-                <UserList peers={peers} localUsername={username} />
+                <UserList peers={peers} localUsername={username} isHost={isHost} onTogglePermission={onTogglePermission} />
             </div>
 
             {/* Messages Area - Only this part scrolls */}

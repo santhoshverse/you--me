@@ -28,17 +28,46 @@ const idleStyle = {
 export default function VideoAvatar({ stream, label, micEnabled = true, camEnabled = true }) {
     const videoRef = useRef();
 
+    const [isPiP, setIsPiP] = React.useState(false);
+
     useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(() => { });
+        const videoEl = videoRef.current;
+        if (videoEl && stream) {
+            videoEl.srcObject = stream;
+            videoEl.play().catch(() => { });
+
+            // PiP Events
+            const onEnterPiP = () => setIsPiP(true);
+            const onLeavePiP = () => setIsPiP(false);
+
+            videoEl.addEventListener("enterpictureinpicture", onEnterPiP);
+            videoEl.addEventListener("leavepictureinpicture", onLeavePiP);
+
+            return () => {
+                videoEl.removeEventListener("enterpictureinpicture", onEnterPiP);
+                videoEl.removeEventListener("leavepictureinpicture", onLeavePiP);
+            };
         }
     }, [stream]);
 
     const isSelf = label === "You" || label === localStorage.getItem("name");
 
+    // Hide visually but keep in DOM to maintain PiP connection
+    const containerStyle = isPiP ? {
+        width: 0,
+        height: 0,
+        overflow: "hidden",
+        opacity: 0,
+        margin: 0,
+        padding: 0,
+        position: "absolute" // Ensure it takes no layout space
+    } : {
+        textAlign: "center",
+        position: "relative"
+    };
+
     return (
-        <div style={{ textAlign: "center", position: "relative" }}>
+        <div style={containerStyle}>
             <div
                 className="avatar-container"
                 style={{

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Draggable from "react-draggable";
 import { socket } from "../socket";
 import CouchLayout from "../components/CouchLayout";
 import ChatPanel from "../components/ChatPanel";
@@ -10,11 +11,43 @@ import { generateRandomName } from "../utils/randomName";
 import { copyToClipboard } from "../utils/clipboard";
 
 // --- Sub-component: The actual room content ---
+function URLInputModal({ isOpen, onClose, onSubmit, type }) {
+    const [input, setInput] = React.useState("");
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={modalOverlay}>
+            <div style={modalBox}>
+                <h2 style={{ marginBottom: "15px" }}>
+                    {type === "youtube" ? "📺 Play YouTube Video" : "🌐 Browse Website"}
+                </h2>
+                <input
+                    autoFocus
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={type === "youtube" ? "Paste YouTube Link..." : "Enter Website URL (e.g. google.com)"}
+                    style={joinInput}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") onSubmit(input);
+                        if (e.key === "Escape") onClose();
+                    }}
+                />
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                    <button onClick={onClose} style={modalCancelBtn}>Cancel</button>
+                    <button onClick={() => onSubmit(input)} style={joinButton}>Load Content</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function RoomContent({ roomId, username }) {
     const navigate = useNavigate();
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
     const [copied, setCopied] = useState(false);
     const [idCopied, setIdCopied] = useState(false);
+    const avatarDragRef = React.useRef(null);
 
     const {
         localStream,
@@ -22,6 +55,7 @@ function RoomContent({ roomId, username }) {
         joinRoom,
         leaveRoom,
         startScreenShare,
+        startFileStream,
         stopScreenShare,
         isSharing,
         screenStream,
@@ -32,7 +66,8 @@ function RoomContent({ roomId, username }) {
         isHost,
         kickPeer,
         media,
-        playback
+        playback,
+        screenShareEnabled
     } = useWebRTC();
 
     // --- MODE & STATE ---
@@ -40,23 +75,33 @@ function RoomContent({ roomId, username }) {
     const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
     const [remoteScreenPeerId, setRemoteScreenPeerId] = useState(null);
     const [showSecondaryActions, setShowSecondaryActions] = useState(false);
+    const [showLocalPreview, setShowLocalPreview] = useState(false);
+    const [scaleMode, setScaleMode] = useState("contain"); // "contain" or "cover"
+
+    // URL Modal State
+    const [urlModal, setUrlModal] = useState({ isOpen: false, type: null });
 
     // Mode Logic
-    const isSyncMode = !!media && media.type !== "file";
+    const isSyncMode = !!media; // Any media (YouTube, File, URL) is Sync Mode
     const isStreamMode = isRemoteScreenSharing || isSharing;
 
     // Detect who is sharing screen remotely
+    // Detect who is sharing screen remotely
     useEffect(() => {
-        if (isRemoteScreenSharing && peers) {
-            const sharerId = Object.keys(peers).find(pid => peers[pid].isSharing);
+        if (!peers) return;
+        const sharerId = Object.keys(peers).find(pid => peers[pid]?.isSharing);
+
+        if (sharerId) {
             setRemoteScreenPeerId(sharerId);
+            setIsRemoteScreenSharing(true);
         } else {
             setRemoteScreenPeerId(null);
+            setIsRemoteScreenSharing(false);
         }
-    }, [isRemoteScreenSharing, peers]);
+    }, [peers]);
 
     // Active Stream for Stream Mode
-    const activeStream = isSharing ? screenStream : (remoteScreenPeerId ? peers[remoteScreenPeerId]?.stream : null);
+    const activeStream = isSharing ? screenStream : (remoteScreenPeerId ? (peers[remoteScreenPeerId]?.screenStream || peers[remoteScreenPeerId]?.stream) : null);
 
     useEffect(() => {
         joinRoom(roomId, username);
@@ -90,22 +135,38 @@ function RoomContent({ roomId, username }) {
         });
     }
 
+    // URL Join Logic
+    useEffect(() => {
+        if (roomId) {
+            joinRoom(roomId);
+        }
+    }, [roomId]);
+
     const handleSelectMedia = (type, payload) => {
-        if (!isHost) return alert("Only Host can change content.");
+        // PERMISSION CHECK FOR SCREEN SHARE
+        if (type === "screen") {
+            if (!isHost && !screenShareEnabled) {
+                return alert("🚫 Permission Denied\n\nOnly the Host can stream screens.\nAsk the Host to enable 'Screen Share' for you.");
+            }
+            // Proceed to share logic below...
+        } else {
+            // For YouTube/Files, ONLY HOST can control
+            if (!isHost) return alert("Only Host can change content.");
+        }
 
         if (type === "file" && payload) {
-            // Local File -> Enforce Screen Share but play locally so we can capture it
-            const confirmShare = window.confirm("To play a local file, you must share your screen (or specific tab/window). Start Screen Share?");
-            if (confirmShare) {
-                // Clear Sync Media first
-                socket.emit("set-media", { roomId, media: null });
-                // Start Screen Share (Stream Mode)
-                startScreenShare(roomId);
+            // STREAM MODE: Host plays local file, shares TAB.
+            // 1. Play locally
+            const url = URL.createObjectURL(payload);
+            setLocalVideoUrl(url);
 
-                // Show the file LOCALLY so the host can see it and capture it
-                const url = URL.createObjectURL(payload);
-                setLocalVideoUrl(url);
-            }
+            // 2. Clear Sync State (YouTube) so guests don't see conflicts
+            socket.emit("set-media", { roomId, media: null });
+
+            // 3. Trigger Screen Share
+            // We explain this clearly to the user
+            alert("👉 FOR BEST QUALITY:\n\n1. Select 'This Tab' in the popup.\n2. Enable 'Share Tab Audio'.\n3. The video will play locally and stream to friends.");
+            startScreenShare(roomId);
 
         } else if (type === "screen") {
             if (isSharing) {
@@ -118,59 +179,71 @@ function RoomContent({ roomId, username }) {
                 startScreenShare(roomId);
             }
         } else {
-            // YouTube / URL Button
-            const url = prompt("Enter YouTube URL:");
-            if (url) handleURL(url);
+            // YouTube or Web: Open Modal
+            setUrlModal({ isOpen: true, type });
         }
+    };
+
+    const handleUrlSubmit = (url) => {
+        if (!url) return;
+
+        // Stop screen share if active
+        if (isSharing) stopScreenShare(roomId);
+
+        let finalUrl = url.trim();
+        // Auto-fix website URLs
+        if (urlModal.type === "web" && !/^https?:\/\//i.test(finalUrl)) {
+            finalUrl = "https://" + finalUrl;
+        }
+
+        handleURL(finalUrl);
+        setUrlModal({ isOpen: false, type: null });
     };
 
     const [messages, setMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
 
     useEffect(() => {
-        const handleChat = (msg) => setMessages(prev => [...prev, msg]);
-        const handleRoomState = ({ state, messages: history }) => {
-            if (state?.media?.type && state.media.type !== "file") {
-                // If remote sync media is active, clear local file view
-                setLocalVideoUrl(null);
-            }
-            if (state?.is_screen_sharing !== undefined) {
-                setIsRemoteScreenSharing(state.is_screen_sharing);
-            }
+        socket.on("chat-message", (msg) => {
+            setMessages((prev) => [...prev, msg]);
+        });
 
-            if (history) {
-                const formattedHistory = history.map(m => ({
-                    id: m.id,
-                    message: m.text || m.message,
-                    username: m.username,
-                    time: m.createdAt
-                }));
-                setMessages(formattedHistory);
-            }
-        };
-
-        socket.on("chat-message", handleChat);
-        socket.on("room-state", handleRoomState);
+        // Also listen for room-state to get history if not handled by hook
+        socket.on("room-state", ({ messages: history }) => {
+            if (history) setMessages(history);
+        });
 
         return () => {
-            socket.off("chat-message", handleChat);
-            socket.off("room-state", handleRoomState);
-        }
+            socket.off("chat-message");
+            socket.off("room-state");
+        };
     }, []);
 
-    function sendMessage() {
+    const sendMessage = () => {
         if (!chatInput.trim()) return;
+
+        // Optimistic update? No, wait for server ack usually, but for simplicity:
+        // We let the server broadcast it back (including to sender) to ensure ordering/timestamp.
+        // Or if server doesn't echo to sender, we add it. 
+        // Backend (socket.js line 86): io.to(roomId).emit(...) -> Broadcasts to ALL in room.
+
         socket.emit("chat-message", {
             roomId,
             message: chatInput,
-            username: username
+            username
         });
         setChatInput("");
-    }
+    };
+
+    // Simplified Render Logic for Content Area
+    // Priorities:
+    // 1. Host Local Player (if Host & File) - localVideoUrl
+    // 2. Active Screen Share Stream (activeStream)
+    // 3. Sync Player (YouTube/URL) - media
+    // 4. Waiting State
 
     return (
         <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
-
             {/* Confirmation Modal Overlay */}
             {showLeaveConfirm && (
                 <div style={modalOverlay}>
@@ -185,7 +258,15 @@ function RoomContent({ roomId, username }) {
                 </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222", width: "300px" }}>
+            {/* URL Input Modal */}
+            <URLInputModal
+                isOpen={urlModal.isOpen}
+                onClose={() => setUrlModal({ ...urlModal, isOpen: false })}
+                onSubmit={handleUrlSubmit}
+                type={urlModal.type}
+            />
+
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", borderRight: "1px solid #222", width: "300px", minWidth: "300px", background: "#111", zIndex: 50 }}>
                 <div style={{ padding: "15px", background: "#111", borderBottom: "1px solid #222" }}>
                     <div style={{ marginBottom: "12px" }}>
                         <div style={{ color: "#777", fontSize: "10px", textTransform: "uppercase", fontWeight: "bold", marginBottom: "5px", letterSpacing: "0.5px" }}>Room Details</div>
@@ -240,38 +321,25 @@ function RoomContent({ roomId, username }) {
                     roomId={roomId}
                     username={username}
                     peers={peers}
+                    isHost={isHost}
+                    onTogglePermission={(targetPeerId) => {
+                        socket.emit("admin-action", {
+                            roomId,
+                            action: "toggle-screen-share",
+                            targetPeerId
+                        });
+                    }}
                 />
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-                {/* Top Bar with URL Input (Host Only) or Info */}
+                {/* Top Bar */}
                 <div style={{ background: "#111", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" }}>
-                    <div style={{ color: "#777", fontSize: "12px", border: "1px solid #333", padding: "5px 10px", borderRadius: "5px", background: "#000" }}>
-                        ROOM: <span style={{ color: "#7a35f0", fontWeight: "bold" }}>{roomId}</span>
-                    </div>
-                    {isHost && (
-                        <input
-                            type="text"
-                            placeholder="Paste YouTube or Web Video URL (Sync Mode)..."
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    handleURL(e.target.value);
-                                    e.target.value = "";
-                                }
-                            }}
-                            style={{
-                                width: "60%",
-                                padding: "10px",
-                                fontSize: "14px",
-                                borderRadius: "8px",
-                                border: "1px solid #333",
-                                background: "#222",
-                                color: "white",
-                                outline: "none"
-                            }}
-                        />
-                    )}
-                    {!isHost && (
+                    {/* ... (Invite UI matches original) ... */}
+
+
+
+                    {!isHost && !media && !activeStream && (
                         <div style={{ color: "#555", fontSize: "12px", fontStyle: "italic" }}>
                             Waiting for host to select content...
                         </div>
@@ -280,29 +348,143 @@ function RoomContent({ roomId, username }) {
 
                 <div style={{ flex: 1, background: "black", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
 
-                    {/* 0. LOCAL FILE SOURCE (Host Only - The content being shared) */}
-                    {localVideoUrl && (
-                        <div style={{ width: "100%", height: "100%", zIndex: 11 }}>
+                    {/* 1. HOST LOCAL PLAYER (Source of truth for stream) */}
+                    {isHost && localVideoUrl && (
+                        <div style={{ width: "100%", height: "100%", zIndex: 11, background: "black", display: "flex", flexDirection: "column" }}>
                             {/* Hint Overlay */}
-                            <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 20, background: "rgba(122, 53, 240, 0.8)", padding: "5px 10px", borderRadius: "5px", color: "white", fontSize: "12px", pointerEvents: "none" }}>
-                                🔴 You must Share This Tab for others to see this video!
+                            <div style={{ position: "absolute", top: 10, left: 10, zIndex: 100, background: "rgba(0,0,0,0.6)", padding: "5px 10px", borderRadius: "4px", color: "white", fontSize: "12px" }}>
+                                🔴 You are playing this file locally. Ensure Screen Share is active!
                             </div>
                             <video
                                 src={localVideoUrl}
                                 controls
-                                playsInline
-                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                style={{ width: "100%", height: "100%" }}
                             />
                         </div>
                     )}
 
-                    {/* 1. SYNC MODE: YouTube Player */}
-                    {!localVideoUrl && isSyncMode && (
+                    {/* 2. ACTIVE STREAM (Screen Share) */}
+                    {/* We show this if:
+                        a) We are NOT the host playing a local file (handled above)
+                        b) There is an active stream (either ours or remote)
+                    */}
+                    {!localVideoUrl && activeStream && (
+                        <div id="stream-container" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10, background: "black", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 20, background: "rgba(0,0,0,0.7)", padding: "5px 10px", borderRadius: "5px", color: "white", fontSize: "12px", pointerEvents: "none" }}>
+                                {isSharing ? "You are sharing your screen" : `${peers[remoteScreenPeerId]?.username || "Host"} is sharing`}
+                            </div>
+
+                            {/* IF SHARING & PREVIEW HIDDEN */}
+                            {isSharing && !showLocalPreview ? (
+                                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#666", gap: "15px" }}>
+                                    <div style={{ fontSize: "50px" }}>♾️</div>
+                                    <div style={{ fontSize: "16px", fontWeight: "bold", color: "#aaa" }}>Preview Hidden</div>
+                                    <div style={{ fontSize: "12px", maxWidth: "400px", textAlign: "center" }}>
+                                        To prevent the "Infinite Mirror" effect, your screen preview is hidden locally.
+                                        <br />Your friends can still see your stream perfectly!
+                                    </div>
+                                    <button
+                                        onClick={() => setShowLocalPreview(true)}
+                                        style={{ marginTop: "10px", padding: "8px 16px", background: "#333", border: "1px solid #555", color: "#ddd", borderRadius: "5px", cursor: "pointer" }}
+                                    >
+                                        Show Preview Anyway
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            const el = document.getElementById("stream-container");
+                                            if (!document.fullscreenElement) {
+                                                el.requestFullscreen().catch(err => console.log(err));
+                                            } else {
+                                                document.exitFullscreen();
+                                            }
+                                        }}
+                                        style={{
+                                            position: "absolute",
+                                            top: "10px",
+                                            right: "10px",
+                                            zIndex: 20,
+                                            background: "rgba(0,0,0,0.6)",
+                                            border: "1px solid rgba(255,255,255,0.2)",
+                                            borderRadius: "4px",
+                                            color: "white",
+                                            cursor: "pointer",
+                                            padding: "5px 8px",
+                                            fontSize: "14px",
+                                            transition: "background 0.2s"
+                                        }}
+                                        title="Toggle Fullscreen"
+                                    >
+                                        ⛶
+                                    </button>
+
+                                    {isSharing && showLocalPreview && (
+                                        <button
+                                            onClick={() => setShowLocalPreview(false)}
+                                            style={{
+                                                position: "absolute",
+                                                top: "10px",
+                                                right: "50px", // Updated to not overlap
+                                                zIndex: 20,
+                                                background: "rgba(0,0,0,0.6)",
+                                                border: "1px solid rgba(255,255,255,0.2)",
+                                                borderRadius: "4px",
+                                                color: "#e17055",
+                                                cursor: "pointer",
+                                                padding: "5px 8px",
+                                                fontSize: "12px",
+                                            }}
+                                        >
+                                            Hide Preview
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={() => setScaleMode(prev => prev === "contain" ? "cover" : "contain")}
+                                        style={{
+                                            position: "absolute",
+                                            top: "10px",
+                                            right: "90px", // Left of Fullscreen
+                                            zIndex: 20,
+                                            background: "rgba(0,0,0,0.6)",
+                                            border: "1px solid rgba(255,255,255,0.2)",
+                                            borderRadius: "4px",
+                                            color: "white",
+                                            cursor: "pointer",
+                                            padding: "5px 8px",
+                                            fontSize: "14px",
+                                            fontWeight: "bold"
+                                        }}
+                                        title="Toggle Fit/Fill"
+                                    >
+                                        {scaleMode === "contain" ? "⤢ Fill" : "⬜ Fit"}
+                                    </button>
+
+                                    <video
+                                        autoPlay
+                                        playsInline
+                                        ref={(video) => {
+                                            if (video && video.srcObject !== activeStream) {
+                                                video.srcObject = activeStream;
+                                            }
+                                        }}
+                                        style={{ width: "100%", height: "100%", objectFit: scaleMode, backgroundColor: "black" }}
+                                    />
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 3. SYNC PLAYER (YouTube) */}
+                    {/* Show only if NO stream is active (Stream takes priority) */}
+                    {!activeStream && media && (
                         <div style={{ width: "100%", height: "100%" }}>
                             <YouTubePlayer
                                 roomId={roomId}
-                                localVideoUrl={null}
-                                setLocalVideoUrl={() => { }}
+                                localVideoUrl={localVideoUrl}
+                                setLocalVideoUrl={setLocalVideoUrl}
                                 isHost={isHost}
                                 media={media}
                                 playback={playback}
@@ -310,54 +492,16 @@ function RoomContent({ roomId, username }) {
                         </div>
                     )}
 
-                    {/* 2. STREAM MODE: Screen Share (Local or Remote) */}
-                    {!localVideoUrl && isStreamMode && activeStream && (
-                        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10, background: "black" }}>
-                            {/* Label to indicate who is sharing */}
-                            <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 20, background: "rgba(0,0,0,0.7)", padding: "5px 10px", borderRadius: "5px", color: "white", fontSize: "12px", pointerEvents: "none" }}>
-                                {isSharing ? "You are sharing your screen" : `${peers[remoteScreenPeerId]?.username || "Target"} is sharing screen`}
-                            </div>
-                            <video
-                                autoPlay
-                                playsInline
-                                ref={(video) => {
-                                    if (video && video.srcObject !== activeStream) {
-                                        video.srcObject = activeStream;
-                                    }
-                                }}
-                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                            />
-                        </div>
-                    )}
-
-                    {/* 3. IDLE STATE */}
-                    {!localVideoUrl && !isSyncMode && !isStreamMode && (
+                    {/* 4. WAITING STATE */}
+                    {!localVideoUrl && !activeStream && !media && (
                         <div style={{ color: "#444", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
                             <div style={{ fontSize: "40px" }}>📺</div>
                             <div>Waiting for content...</div>
+                            {!isHost && <div style={{ fontSize: "12px", color: "#666" }}>The host hasn't started streaming yet.</div>}
                         </div>
                     )}
 
-                    {/* Floating Camera Overlay (Avatars) - ALWAYS VISIBLE */}
-                    <div style={{
-                        position: "absolute",
-                        bottom: "20px",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        zIndex: 100,
-                        width: "auto",
-                        pointerEvents: "none"
-                    }}>
-                        <div style={{ pointerEvents: "auto" }}>
-                            <CouchLayout
-                                localStream={localStream}
-                                peers={peers}
-                                username={username}
-                                isHost={isHost}
-                                onKick={kickPeer}
-                            />
-                        </div>
-                    </div>
+
                 </div>
             </div>
 
@@ -369,8 +513,29 @@ function RoomContent({ roomId, username }) {
                 roomId={roomId}
                 onSelectMedia={handleSelectMedia}
                 isHost={isHost}
-                isSharing={isSharing}
+                isSharing={isSharing && !localVideoUrl} // Only show screen share active if NOT playing a local file
             />
+
+            {/* Floating Avatars (Draggable Anywhere) */}
+            <Draggable nodeRef={avatarDragRef}>
+                <div
+                    ref={avatarDragRef}
+                    style={{
+                        position: "fixed",
+                        bottom: "20px",
+                        left: 0,
+                        right: 0,
+                        margin: "auto",
+                        width: "fit-content",
+                        zIndex: 999, // High z-index to float over sidebars
+                        cursor: "grab"
+                    }}
+                >
+                    <div style={{ pointerEvents: "auto" }}>
+                        <CouchLayout localStream={localStream} peers={peers} username={username} isHost={isHost} onKick={kickPeer} />
+                    </div>
+                </div>
+            </Draggable>
         </div>
     );
 }

@@ -1,0 +1,30 @@
+{
+  "name": "y_ouandme",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\" \"npm run electron\"",
+    "backend": "cd backend && npm start",
+    "frontend": "cd frontend && npm run dev",
+    "electron": "wait-on tcp:5173 && electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santhoshverse/you--me.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/santhoshverse/you--me/issues"
+  },
+  "homepage": "https://github.com/santhoshverse/you--me#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.7",
+    "wait-on": "^9.0.3"
+  }
+}

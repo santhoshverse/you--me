@@ -11,6 +11,7 @@ const RoomMember = sequelize.define("RoomMember", {
     role: { type: DataTypes.ENUM("host", "moderator", "guest"), defaultValue: "guest" },
     mic_enabled: { type: DataTypes.BOOLEAN, defaultValue: true },
     cam_enabled: { type: DataTypes.BOOLEAN, defaultValue: true },
+    screen_share_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
     is_sharing: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, { tableName: "room_members", timestamps: false, underscored: true });
 
