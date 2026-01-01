@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function CreateRoomPage() {
     const [mode, setMode] = useState("create"); // 'create' | 'join'
@@ -53,8 +53,11 @@ export default function CreateRoomPage() {
             {/* Header Removed */}
 
             <div style={glassCard}>
-                <h1 style={titleStyle}>You & Me</h1>
-                <p style={subtitleStyle}>Watch together, anywhere.</p>
+                <h1 style={titleStyle}>Watch Videos Together Online – Free & Real-Time</h1>
+                <p style={subtitleStyle}>
+                    Watch videos together with friends in real time.
+                    Share your screen or browser tab instantly and enjoy movies, YouTube videos, and websites together — no downloads, no sign-up required.
+                </p>
 
                 <div style={tabContainer}>
                     <button
@@ -97,19 +100,63 @@ export default function CreateRoomPage() {
                     )}
                 </div>
             </div>
+            <div style={seoContentStyle}>
+                <section style={sectionStyle}>
+                    <h2 style={sectionTitleStyle}>Features</h2>
+                    <ul style={listStyle}>
+                        <li>Watch together with friends in real time</li>
+                        <li>High-quality screen and tab sharing</li>
+                        <li>Low latency streaming</li>
+                        <li>Works on Chrome, Edge, Firefox, and mobile browsers</li>
+                        <li>No installation required</li>
+                    </ul>
+                </section>
+
+                <section style={sectionStyle}>
+                    <h2 style={sectionTitleStyle}>How It Works</h2>
+                    <ol style={listStyle}>
+                        <li>Create a room and share the invite link</li>
+                        <li>Start screen or browser tab sharing</li>
+                        <li>Friends join and watch the same content instantly</li>
+                    </ol>
+                </section>
+
+                <section style={sectionStyle}>
+                    <h2 style={sectionTitleStyle}>Perfect For</h2>
+                    <ul style={listStyle}>
+                        <li>Watching YouTube videos together</li>
+                        <li>Online movie nights</li>
+                        <li>Remote presentations and demos</li>
+                        <li>Studying or browsing together</li>
+                    </ul>
+                </section>
+
+                <section style={sectionStyle}>
+                    <h2 style={sectionTitleStyle}>Start Watching Together Now</h2>
+                    <p>Create a room and invite your friends — it’s free and works instantly.</p>
+                </section>
+
+                <footer style={footerStyle}>
+                    <Link to="/faq" style={linkStyle}>Frequently Asked Questions</Link>
+                </footer>
+            </div>
         </div>
     );
 }
 
 const containerStyle = {
-    height: "100vh",
+    minHeight: "100vh",
     width: "100vw",
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: "60px",
+    paddingBottom: "40px",
     background: "radial-gradient(circle at top left, #1a1a2e, #16213e, #0f3460)",
     color: "white",
-    fontFamily: "'Inter', sans-serif"
+    fontFamily: "'Inter', sans-serif",
+    overflowY: "auto"
 };
 
 const glassCard = {
@@ -125,7 +172,7 @@ const glassCard = {
 };
 
 const titleStyle = {
-    fontSize: "42px",
+    fontSize: "32px",
     fontWeight: "800",
     marginBottom: "10px",
     background: "linear-gradient(45deg, #fff, #7a35f0)",
@@ -262,4 +309,45 @@ const logoutBtn = {
     fontSize: "14px",
     fontWeight: "bold",
     textDecoration: "underline"
+};
+const seoContentStyle = {
+    marginTop: "60px",
+    maxWidth: "800px",
+    width: "90%",
+    padding: "20px",
+    background: "rgba(0, 0, 0, 0.2)",
+    borderRadius: "16px",
+    marginBottom: "40px"
+};
+
+const sectionStyle = {
+    marginBottom: "40px"
+};
+
+const sectionTitleStyle = {
+    fontSize: "24px",
+    marginBottom: "15px",
+    color: "#7a35f0"
+};
+
+const listStyle = {
+    textAlign: "left",
+    paddingLeft: "20px",
+    lineHeight: "1.6",
+    color: "#ddd"
+};
+
+const footerStyle = {
+    marginTop: "40px",
+    textAlign: "center",
+    borderTop: "1px solid rgba(255,255,255,0.1)",
+    paddingTop: "20px",
+    width: "100%"
+};
+
+const linkStyle = {
+    color: "#aaa",
+    textDecoration: "none",
+    fontSize: "14px",
+    transition: "color 0.2s"
 };
