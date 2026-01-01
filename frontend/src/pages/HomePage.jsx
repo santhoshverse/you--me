@@ -14,8 +14,17 @@ export default function HomePage() {
     return (
         <div style={containerStyle}>
             <div style={glowStyle} />
-            <h1 style={titleStyle}>You&Me</h1>
-            <p style={subtitleStyle}>Watch, chat, and hang out together!</p>
+            <h1 style={titleStyle}>Watch Together with Friends – You & Me</h1>
+
+            <p style={subtitleStyle}>
+                You & Me is a free watch party platform that lets friends watch videos together,
+                share screens, browse websites live, and chat in real time.
+            </p>
+
+            <p style={{ ...subtitleStyle, marginTop: '-20px', fontSize: '16px' }}>
+                Create a room, invite friends, and enjoy synchronized watching –
+                no login required.
+            </p>
 
             {name ? (
                 <div style={profileStyle}>
@@ -64,7 +73,7 @@ const glowStyle = {
 };
 
 const titleStyle = {
-    fontSize: "64px",
+    fontSize: "48px",
     fontWeight: "900",
     marginBottom: "10px",
     letterSpacing: "-2px",
