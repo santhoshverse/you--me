@@ -54,11 +54,7 @@ export default function CreateRoomPage() {
 
             <div style={glassCard}>
                 <h1 style={brandTitleStyle}>You & Me</h1>
-                <h2 style={seoTitleStyle}>Watch Videos Together Online – Free & Real-Time</h2>
-                <p style={subtitleStyle}>
-                    Watch videos together with friends in real time.
-                    Share your screen or browser tab instantly and enjoy movies, YouTube videos, and websites together — no downloads, no sign-up required.
-                </p>
+                <p style={subtitleStyle}>Watch together, anywhere.</p>
 
                 <div style={tabContainer}>
                     <button
@@ -146,7 +142,7 @@ export default function CreateRoomPage() {
                     </p>
                 </footer>
             </div>
-        </div>
+        </div >
     );
 }
 
