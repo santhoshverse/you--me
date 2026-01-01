@@ -53,7 +53,8 @@ export default function CreateRoomPage() {
             {/* Header Removed */}
 
             <div style={glassCard}>
-                <h1 style={titleStyle}>Watch Videos Together Online – Free & Real-Time</h1>
+                <h1 style={brandTitleStyle}>You & Me</h1>
+                <h2 style={seoTitleStyle}>Watch Videos Together Online – Free & Real-Time</h2>
                 <p style={subtitleStyle}>
                     Watch videos together with friends in real time.
                     Share your screen or browser tab instantly and enjoy movies, YouTube videos, and websites together — no downloads, no sign-up required.
@@ -137,7 +138,12 @@ export default function CreateRoomPage() {
                 </section>
 
                 <footer style={footerStyle}>
-                    <Link to="/faq" style={linkStyle}>Frequently Asked Questions</Link>
+                    <p style={{ marginBottom: "10px" }}>
+                        <Link to="/faq" style={linkStyle}>Frequently Asked Questions</Link>
+                    </p>
+                    <p>
+                        <a href="mailto:feedback@youandme.app" style={linkStyle}>Have feedback? Contact us</a>
+                    </p>
                 </footer>
             </div>
         </div>
@@ -171,13 +177,21 @@ const glassCard = {
     border: "1px solid rgba(255, 255, 255, 0.1)"
 };
 
-const titleStyle = {
-    fontSize: "32px",
-    fontWeight: "800",
-    marginBottom: "10px",
+const brandTitleStyle = {
+    fontSize: "48px",
+    fontWeight: "900",
+    marginBottom: "5px",
     background: "linear-gradient(45deg, #fff, #7a35f0)",
     WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent"
+    WebkitTextFillColor: "transparent",
+    letterSpacing: "-1px"
+};
+
+const seoTitleStyle = {
+    fontSize: "20px",
+    fontWeight: "600",
+    color: "#ccc",
+    marginBottom: "20px"
 };
 
 const subtitleStyle = {
