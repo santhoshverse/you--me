@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage.jsx";
 import CreateRoomPage from "./pages/CreateRoomPage.jsx";
 import RoomPage from "./pages/RoomPage.jsx";
 import FAQPage from "./pages/FAQPage.jsx";
+import FeedbackPage from "./pages/FeedbackPage.jsx";
 
 import "./styles.css";
 import PublicRoomsPage from "./pages/PublicRoomsPage.jsx";
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                 <Route path="/rooms" element={<PublicRoomsPage />} />
                 <Route path="/room/:roomId" element={<RoomPage />} />
                 <Route path="/faq" element={<FAQPage />} />
+                <Route path="/feedback" element={<FeedbackPage />} />
             </Routes>
         </BrowserRouter>
     </GoogleOAuthProvider>

@@ -6,6 +6,7 @@ import { PORT, DB_CONFIG } from "./config.js";
 import { connectDB, sequelize } from "./db.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 import { socketHandler } from "./socket.js";
 
 // Production Server Initialization
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/rooms", roomRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 // File Uploads (Local Streaming)
 import multer from "multer";

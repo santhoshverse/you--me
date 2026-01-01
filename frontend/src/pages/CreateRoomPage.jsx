@@ -138,7 +138,7 @@ export default function CreateRoomPage() {
                         <Link to="/faq" style={linkStyle}>Frequently Asked Questions</Link>
                     </p>
                     <p>
-                        <a href="mailto:feedback@youandme.app" style={linkStyle}>Have feedback? Contact us</a>
+                        <Link to="/feedback" style={linkStyle}>Have feedback? Contact us</Link>
                     </p>
                 </footer>
             </div>
